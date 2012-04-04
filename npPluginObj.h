@@ -8,10 +8,13 @@
  *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 #pragma once
 
+#include "npapi.h"
+#include "npfunctions.h"
+#include "npHostObj.h"
+
 namespace NPObjFramework {
 
-    class NPPluginObj {
-    public:
+    struct NPPluginObj {
         virtual NPError initialize(NPMIMEType pluginType, uint16_t mode, 
             int16_t argc, char* argn[], char* argv[], NPSavedData* saved) = 0
         virtual NPError destroy(NPSavedData** save) = 0;
@@ -37,12 +40,46 @@ namespace NPObjFramework {
         virtual char**  getSitesWithData(void) { return NULL; }
     };
 
-    inline NPPluginObj* asNSPluginObj(NPP instance) {
-        return (!instance || !instance->npp) ? NULL
-            : static_cast<NPPluginObj*>(instance->npp);
+    template <typename T=NSPluginObj>
+    inline T* asNSPluginObj(NPP instance) {
+        return (!instance || !instance->npp) ? NULL : static_cast<T*>(instance->npp);
     }
-
 }
 
+/* implement createNPPluginObj to create concrete instance of an NPPluginObj */
 NPObjFramework::NPPluginObj* createNPPluginObj(NPP pluginInstance, NPNetscapeFuncs* hostApi);
+
+
+namespace NPObjFramework {
+    struct NPPluginObjBase : NPPluginObj {
+        NPHostObj host;
+
+        NPPluginObjBase(NPP pluginInstance, NPNetscapeFuncs* hostApi) 
+            : host(pluginInstance, hostApi)
+        { }
+
+        virtual ~NPPluginObjBase() {}
+
+        virtual NPError initialize(NPMIMEType pluginType, uint16_t mode, 
+            int16_t argc, char* argn[], char* argv[], NPSavedData* saved) 
+        { // composed method: initMime followed by initArg() for each arg
+            NPError err = initStart(pluginType, mode);
+            if (err) return err;
+            for (int16_t idx=0; idx<argc; idx++) {
+                initArg(argn[idx], argv[idx]);
+                if (err) return err;
+            }
+            err = initFinish(pluginType, mode);
+            return err;
+        }
+        virtual NPError initStart(NPMIMEType pluginType, uint16_t mode) { return NPERR_NO_ERROR; }
+        virtual NPError initFinish(NPMIMEType pluginType, uint16_t mode) { return NPERR_NO_ERROR; }
+        virtual NPError initArg(char* name, char* value) { return NPERR_NO_ERROR; }
+
+        virtual NPError destroy(NPSavedData** save) {
+            delete this;
+            return NPERR_NO_ERROR;
+        }
+    }
+}
 

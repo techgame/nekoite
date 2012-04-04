@@ -67,9 +67,6 @@ void NP_Shutdown(void) {
 NPError NPP_New(NPMIMEType pluginType, NPP instance, uint16_t mode, 
         int16_t argc, char* argn[], char* argv[], NPSavedData* saved);
 {
-    //NPBool bFalse = false;
-    //g_hostApi->setvalue(instance, NPPVpluginWindowBool, (void *)bFalse);
-
     try {
         NPPluginObj* obj = createNPPluginObj(instance, g_hostApi);
         if (!obj) return NPERR_GENERIC_ERROR;
@@ -94,14 +91,14 @@ NPError NPP_Destroy(NPP instance, NPSavedData** save) {
 NPError NPP_GetValue(NPP instance, NPPVariable variable, void *value) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
-        return !obj?NPERR_INVALID_INSTANCE_ERROR
+        return !obj ? NPERR_INVALID_INSTANCE_ERROR
             : obj->getValue(variable, value);
     } catch (NPException exc) { return exc->err; }
 }
 NPError NPP_SetValue(NPP instance, NPNVariable variable, void *value) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
-        return !obj?NPERR_INVALID_INSTANCE_ERROR
+        return !obj ? NPERR_INVALID_INSTANCE_ERROR
             : obj->setValue(variable, value);
     } catch (NPException exc) { return exc->err; }
 }
@@ -110,49 +107,49 @@ NPError NPP_SetValue(NPP instance, NPNVariable variable, void *value) {
 NPError NPP_NewStream(NPP instance, NPMIMEType type, NPStream* stream, NPBool seekable, uint16_t* stype) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
-        return !obj?NPERR_INVALID_INSTANCE_ERROR
+        return !obj ? NPERR_INVALID_INSTANCE_ERROR
             : obj->newStream(type, stream, seekable, stype);
     } catch (NPException exc) { return exc->err; }
 }
 NPError NPP_DestroyStream(NPP instance, NPStream* stream, NPReason reason) {
     try {
     NPPluginObj* obj = asNSPluginObj(instance);
-    return !obj?NPERR_INVALID_INSTANCE_ERROR
+    return !obj ? NPERR_INVALID_INSTANCE_ERROR
         : obj->destroyStream(stream, reason);
     } catch (NPException exc) { return exc->err; }
 }
 int32_t NPP_WriteReady(NPP instance, NPStream* stream) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
-        return !obj?NPERR_INVALID_INSTANCE_ERROR
+        return !obj ? NPERR_INVALID_INSTANCE_ERROR
             : obj->writeReady(stream);
     } catch (NPException exc) { return exc->err; }
 }
 int32_t NPP_Write(NPP instance, NPStream* stream, int32_t offset, int32_t len, void* buffer) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
-        return !obj?NPERR_INVALID_INSTANCE_ERROR
+        return !obj ? NPERR_INVALID_INSTANCE_ERROR
             : obj->write(stream, offset, len, buffer);
     } catch (NPException exc) { return exc->err; }
 }
 void NPP_StreamAsFile(NPP instance, NPStream* stream, const char* fname) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
-        return !obj?NPERR_INVALID_INSTANCE_ERROR
+        return !obj ? NPERR_INVALID_INSTANCE_ERROR
             : obj->streamAsFile(stream, fname);
     } catch (NPException exc) { return exc->err; }
 }
 void NPP_URLNotify(NPP instance, const char* url, NPReason reason, void* notifyData) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
-        return !obj?NPERR_INVALID_INSTANCE_ERROR
+        return !obj ? NPERR_INVALID_INSTANCE_ERROR
             : obj->urlNotify(url, reason, notifyData);
     } catch (NPException exc) { return exc->err; }
 }
 void NPP_URLRedirectNotify(NPP instance, const char* url, int32_t status, void* notifyData) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
-        return !obj?NPERR_INVALID_INSTANCE_ERROR
+        return !obj ? NPERR_INVALID_INSTANCE_ERROR
             : obj->urlRedirectNotify(url, status, notifyData);
     } catch (NPException exc) { return exc->err; }
 }
@@ -161,35 +158,35 @@ void NPP_URLRedirectNotify(NPP instance, const char* url, int32_t status, void* 
 NPError NPP_SetWindow(NPP instance, NPWindow* window) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
-        return !obj?NPERR_INVALID_INSTANCE_ERROR
+        return !obj ? NPERR_INVALID_INSTANCE_ERROR
             : obj->setWindow(window);
     } catch (NPException exc) { return exc->err; }
 }
 void NPP_Print(NPP instance, NPPrint* platformPrint) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
-        return !obj?NPERR_INVALID_INSTANCE_ERROR
+        return !obj ? NPERR_INVALID_INSTANCE_ERROR
             : obj->print(platformPrint);
     } catch (NPException exc) { return exc->err; }
 }
 int16_t NPP_HandleEvent(NPP instance, void* event) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
-        return !obj?NPERR_INVALID_INSTANCE_ERROR
+        return !obj ? NPERR_INVALID_INSTANCE_ERROR
             : obj->handleEvent(event);
     } catch (NPException exc) { return exc->err; }
 }
 NPBool NPP_GotFocus(NPP instance, NPFocusDirection direction) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
-        return !obj?NPERR_INVALID_INSTANCE_ERROR
+        return !obj ? NPERR_INVALID_INSTANCE_ERROR
             : obj->gotFocus(direction);
     } catch (NPException exc) { return exc->err; }
 }
 void NPP_LostFocus(NPP instance) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
-        return !obj?NPERR_INVALID_INSTANCE_ERROR
+        return !obj ? NPERR_INVALID_INSTANCE_ERROR
             : obj->lostFocus();
     } catch (NPException exc) { return exc->err; }
 }
@@ -198,14 +195,14 @@ void NPP_LostFocus(NPP instance) {
 NPError NPP_ClearSiteData(const char* site, uint64_t flags, uint64_t maxAge) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
-        return !obj?NPERR_INVALID_INSTANCE_ERROR
+        return !obj ? NPERR_INVALID_INSTANCE_ERROR
             : obj->clearSiteData(site, flags, maxAge);
     } catch (NPException exc) { return exc->err; }
 }
 char** NPP_GetSitesWithData(void) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
-        return !obj?NPERR_INVALID_INSTANCE_ERROR
+        return !obj ? NPERR_INVALID_INSTANCE_ERROR
             : obj->getSitesWithData();
     } catch (NPException exc) { return exc->err; }
 }
