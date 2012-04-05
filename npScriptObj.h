@@ -7,15 +7,19 @@
  *~ found in the LICENSE file included with this distribution.    ~*
  *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 #pragma once
+#include "npPluginObj.h"
 
 namespace NPObjFramework {
     template<typename T>
     NPError setvoid(void* dst, T* src) {
-        *((T*)dst) = src;
+        *((T**)dst) = src;
         return NPERR_NO_ERROR;
     }
 
     struct NPScriptObj : NPPluginObjBase {
+        NPScriptObj(NPP inst, NPNetscapeFuncs* hostApi) 
+            : NPPluginObjBase(inst, hostApi) {}
+
         virtual NPError initStart(NPMIMEType pluginType, uint16_t mode) {
             NPBool bFalse = false;
             host.setValue(NPPVpluginWindowBool, (void *)bFalse);
@@ -30,13 +34,13 @@ namespace NPObjFramework {
             case NPPVpluginDescriptionString:
                 return setvoid(value, pluginDescription());
             case NPPVpluginScriptableNPObject:
-                return setvoid(value, plugin->rootScriptObj());
+                return setvoid(value, rootScriptObj());
+            default: return NPERR_GENERIC_ERROR;
             }
-            return NPERR_GENERIC_ERROR;
         }
 
         virtual char* pluginName() = 0;
         virtual char* pluginDescription() = 0;
-        virtual NPObject* rootScriptObj() = 0
+        virtual NPObject* rootScriptObj() = 0;
     };
 }

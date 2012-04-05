@@ -12,7 +12,6 @@
 #include "npfunctions.h"
 
 extern "C" {
-
     NPError NP_Initialize(NPNetscapeFuncs *browserApi);
     NPError NP_GetEntryPoints(NPPluginFuncs *pluginApi);
     void NP_Shutdown(void);
@@ -33,6 +32,4 @@ extern "C" {
     NPBool  NPP_GotFocus(NPP instance, NPFocusDirection direction);
     void    NPP_LostFocus(NPP instance);
     void    NPP_URLRedirectNotify(NPP instance, const char* url, int32_t status, void* notifyData);
-    NPError NPP_ClearSiteData(const char* site, uint64_t flags, uint64_t maxAge);
-    char**  NPP_GetSitesWithData(void);
 }

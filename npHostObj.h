@@ -14,8 +14,8 @@
 namespace NPObjFramework {
 
     struct NPException { 
+        NPException(NPError err_p):err(err_p){};
         NPError err;
-        NPException(err):_err(err){};
     };
     struct NPHostAPIError : NPException {
         NPHostAPIError() : NPException(NPERR_INVALID_FUNCTABLE_ERROR) {}
@@ -24,16 +24,16 @@ namespace NPObjFramework {
     template<typename T> inline T* apiFn(T* fn) { if (!fn) throw NPHostAPIError(); return fn; }
 
     struct NPHostObj {
-        NPNetscapeFuncs* api;
         NPP instance;
+        NPNetscapeFuncs* api;
 
-        NPHostObj(NPNetscapeFuncs* api_p, NPP instance_p) 
-            : api(api_p), instance(instance_p) {}
+        NPHostObj(NPP instance_p, NPNetscapeFuncs* api_p) 
+            : instance(instance_p), api(api_p) {}
 
 
         /* General API */
         void status(const char* message) { return apiFn(api->status)(instance, message); }
-        const char* userAgent() { return apiFn(api->useragent)(instance); }
+        const char* userAgent() { return apiFn(api->uagent)(instance); }
 
         void* memAlloc(uint32_t size) { return apiFn(api->memalloc)(size); }
         void memFree(void* ptr) { apiFn(api->memfree)(ptr); }
@@ -57,9 +57,9 @@ namespace NPObjFramework {
 
         /* Scripting Support */
         NPObject* createObject(NPClass *aClass) {
-            return apiFn(api->createObject)(instance, aClass); }
+            return apiFn(api->createobject)(instance, aClass); }
         NPObject* retainObject(NPObject *npobj) {
-            return apiFn(api->retainObject)(npobj); }
+            return apiFn(api->retainobject)(npobj); }
         void releaseObject(NPObject *npobj) {
             apiFn(api->releaseobject)(npobj); }
         bool invoke(NPObject *npobj, NPIdentifier methodName, const NPVariant *args, uint32_t argCount, NPVariant *result) {
@@ -81,7 +81,7 @@ namespace NPObjFramework {
         bool enumerate(NPObject *npobj, NPIdentifier **identifier, uint32_t *count) {
             return apiFn(api->enumerate)(instance, npobj, identifier, count); }
         bool construct(NPObject *npobj, const NPVariant *args, uint32_t argCount, NPVariant *result) {
-            return apiFn(api->construct)(instance, npobj, propertyName, result); }
+            return apiFn(api->construct)(instance, npobj, args, argCount, result); }
         void setException(NPObject *npobj, const NPUTF8 *message) {
             return apiFn(api->setexception)(npobj, message); }
 
@@ -108,7 +108,7 @@ namespace NPObjFramework {
         int32_t write(NPStream* stream, int32_t len, void* buffer) {
             return apiFn(api->write)(instance, stream, len, buffer); }
         NPError destroyStream(NPStream* stream, NPReason reason) {
-            return apiFn(api->destroystream)(instance, reason); }
+            return apiFn(api->destroystream)(instance, stream, reason); }
 
         NPError getValueForURL(NPNURLVariable variable, const char *url, 
                 char **value, uint32_t *len) {
@@ -122,8 +122,9 @@ namespace NPObjFramework {
                 const char *scheme, const char *realm,
                 char **username, uint32_t *ulen,
                 char **password, uint32_t *plen) {
-            return apiFn(api->getauthenticationinfo)(instance, protocol, host, port
-                    scheme, realm, username, ulen, password, plen); }
+            return apiFn(api->getauthenticationinfo)(instance, 
+                    protocol, host, port, scheme, realm, 
+                    username, ulen, password, plen); }
 
 
         /* Drawing, windowing, printing, and events */

@@ -16,11 +16,11 @@ namespace NPObjFramework {
 
     struct NPPluginObj {
         virtual NPError initialize(NPMIMEType pluginType, uint16_t mode, 
-            int16_t argc, char* argn[], char* argv[], NPSavedData* saved) = 0
+            int16_t argc, char* argn[], char* argv[], NPSavedData* saved) = 0;
         virtual NPError destroy(NPSavedData** save) = 0;
 
         virtual NPError getValue(NPPVariable variable, void *value) { return NPERR_NO_ERROR; }
-        virtual NPError setValue(NPPVariable variable, void *value) { return NPERR_NO_ERROR; }
+        virtual NPError setValue(NPNVariable variable, void *value) { return NPERR_NO_ERROR; }
 
         virtual NPError newStream(NPMIMEType type, NPStream* stream, NPBool seekable, uint16_t* stype) { return NPERR_NO_ERROR; }
         virtual NPError destroyStream(NPStream* stream, NPReason reason) { return NPERR_NO_ERROR; }
@@ -35,14 +35,10 @@ namespace NPObjFramework {
         virtual int16_t handleEvent(void* event) { return 0; }
         virtual NPBool  gotFocus(NPFocusDirection direction) { return false; }
         virtual void    lostFocus() {}
-
-        virtual NPError clearSiteData(const char* site, uint64_t flags, uint64_t maxAge) { return NPERR_NO_ERROR; }
-        virtual char**  getSitesWithData(void) { return NULL; }
     };
 
-    template <typename T=NSPluginObj>
-    inline T* asNSPluginObj(NPP instance) {
-        return (!instance || !instance->npp) ? NULL : static_cast<T*>(instance->npp);
+    inline NPPluginObj* asNSPluginObj(NPP instance) {
+        return static_cast<NPPluginObj*>(instance?instance->pdata:NULL);
     }
 }
 
@@ -54,10 +50,8 @@ namespace NPObjFramework {
     struct NPPluginObjBase : NPPluginObj {
         NPHostObj host;
 
-        NPPluginObjBase(NPP pluginInstance, NPNetscapeFuncs* hostApi) 
-            : host(pluginInstance, hostApi)
-        { }
-
+        NPPluginObjBase(NPP inst, NPNetscapeFuncs* hostApi) 
+            : host(inst, hostApi) {}
         virtual ~NPPluginObjBase() {}
 
         virtual NPError initialize(NPMIMEType pluginType, uint16_t mode, 
@@ -80,6 +74,6 @@ namespace NPObjFramework {
             delete this;
             return NPERR_NO_ERROR;
         }
-    }
+    };
 }
 
