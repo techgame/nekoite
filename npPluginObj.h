@@ -35,6 +35,9 @@ namespace NPObjFramework {
         virtual int16_t handleEvent(void* event) { return 0; }
         virtual NPBool  gotFocus(NPFocusDirection direction) { return false; }
         virtual void    lostFocus() {}
+
+        virtual NPHostObj* hostObj() const = 0;
+        inline operator NPP() const { return hostObj()->instance; }
     };
 
     inline NPPluginObj* asNSPluginObj(NPP instance) {
@@ -48,11 +51,12 @@ NPObjFramework::NPPluginObj* createNPPluginObj(NPP pluginInstance, NPNetscapeFun
 
 namespace NPObjFramework {
     struct NPPluginObjBase : NPPluginObj {
-        NPHostObj host;
-
         NPPluginObjBase(NPP inst, NPNetscapeFuncs* hostApi) 
-            : host(inst, hostApi) {}
+            : host(&_hostObj), _hostObj(inst, hostApi) {}
         virtual ~NPPluginObjBase() {}
+
+        NPHostObj* host; NPHostObj _hostObj;
+        virtual NPHostObj* hostObj() const { return host; }
 
         virtual NPError initialize(NPMIMEType pluginType, uint16_t mode, 
             int16_t argc, char* argn[], char* argv[], NPSavedData* saved) 
@@ -60,15 +64,15 @@ namespace NPObjFramework {
             NPError err = initStart(pluginType, mode);
             if (err) return err;
             for (int16_t idx=0; idx<argc; idx++) {
-                initArg(argn[idx], argv[idx]);
+                initArg(idx, argn[idx], argv[idx]);
                 if (err) return err;
             }
             err = initFinish(pluginType, mode);
             return err;
         }
         virtual NPError initStart(NPMIMEType pluginType, uint16_t mode) { return NPERR_NO_ERROR; }
+        virtual NPError initArg(uint16_t argIdx, char* name, char* value) { return NPERR_NO_ERROR; }
         virtual NPError initFinish(NPMIMEType pluginType, uint16_t mode) { return NPERR_NO_ERROR; }
-        virtual NPError initArg(char* name, char* value) { return NPERR_NO_ERROR; }
 
         virtual NPError destroy(NPSavedData** save) {
             delete this;
@@ -77,3 +81,57 @@ namespace NPObjFramework {
     };
 }
 
+
+namespace NPObjFramework {
+    /*~ Utility methods ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+    template<typename T>
+    inline NPError setvoid(void* dst, T* src) {
+        *((T**)dst) = src;
+        return NPERR_NO_ERROR;
+    }
+
+    template <typename T, NPVariantType typeKey>
+    inline NPVariant* t_setVariant(NPVariant* r, T v) { r->type = typeKey; r->value = v; return r; }
+    inline NPVariant* setVariantVoid(NPVariant* r) {
+        r->type = NPVariantType_Void; r->value.objectValue = NULL; return r; }
+    inline NPVariant* setVariantNull(NPVariant* r) {
+        r->type = NPVariantType_Null; r->value.objectValue = NULL; return r; }
+
+    inline NPVariant* setVariant(NPVariant* r, bool v) {
+        r->type = NPVariantType_Bool; r->value.boolValue = v; return r; }
+    inline NPVariant* setVariant(NPVariant* r, int32_t v) {
+        r->type = NPVariantType_Int32; r->value.intValue = v; return r; }
+    inline NPVariant* setVariant(NPVariant* r, double v) {
+        r->type = NPVariantType_Double; r->value.doubleValue = v; return r; }
+    inline NPVariant* setVariant(NPVariant* r, NPObject* v) {
+        r->type = NPVariantType_Object; r->value.objectValue = v; return r; }
+    inline NPVariant* setVariant(NPVariant* r, NPString v) {
+        r->type = NPVariantType_String; r->value.stringValue = v; return r; }
+    inline NPVariant* setVariant(NPVariant* r, const NPUTF8* str, uint32_t len) {
+        r->type = NPVariantType_String;
+        r->value.stringValue.UTF8Characters = str;
+        r->value.stringValue.UTF8Length = len;
+        return r;
+    }
+
+
+    inline const NPVariant* asVariantArgAt(uint32_t argIdx, const NPVariant* args, uint32_t argCount, NPVariantType typeKey) {
+        return (argIdx<argCount && (typeKey == args[argIdx].type)) ? &args[argIdx] : NULL; }
+
+    inline const bool* variantArg(const bool* out, uint32_t argIdx, const NPVariant *args, uint32_t argCount) {
+        args = asVariantArgAt(argIdx, args, argCount, NPVariantType_Bool);
+        return out = args ? &args->value.boolValue : NULL; }
+    inline const int32_t* variantArg(const int32_t* out, uint32_t argIdx, const NPVariant *args, uint32_t argCount) {
+        args = asVariantArgAt(argIdx, args, argCount, NPVariantType_Int32);
+        return out = args ? &args->value.intValue : NULL; }
+    inline const double* variantArg(const double* out, uint32_t argIdx, const NPVariant *args, uint32_t argCount) {
+        args = asVariantArgAt(argIdx, args, argCount, NPVariantType_Double);
+        return out = args ? &args->value.doubleValue : NULL; }
+    inline NPObject* const* variantArg(NPObject* const* out, uint32_t argIdx, const NPVariant *args, uint32_t argCount) {
+        args = asVariantArgAt(argIdx, args, argCount, NPVariantType_Object);
+        return out = args ? &args->value.objectValue : NULL; }
+    inline const NPString* variantArg(const NPString* out, uint32_t argIdx, const NPVariant *args, uint32_t argCount) {
+        args = asVariantArgAt(argIdx, args, argCount, NPVariantType_String);
+        return out = args ? &args->value.stringValue : NULL; }
+}

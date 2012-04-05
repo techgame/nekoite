@@ -30,7 +30,6 @@ namespace NPObjFramework {
         NPHostObj(NPP instance_p, NPNetscapeFuncs* api_p) 
             : instance(instance_p), api(api_p) {}
 
-
         /* General API */
         void status(const char* message) { return apiFn(api->status)(instance, message); }
         const char* userAgent() { return apiFn(api->uagent)(instance); }
@@ -84,6 +83,21 @@ namespace NPObjFramework {
             return apiFn(api->construct)(instance, npobj, args, argCount, result); }
         void setException(NPObject *npobj, const NPUTF8 *message) {
             return apiFn(api->setexception)(npobj, message); }
+
+        void releaseVariantValue(NPVariant *variant) {
+            return apiFn(api->releasevariantvalue)(variant); }
+        NPIdentifier getStringIdentifier(const NPUTF8 *name) {
+            return apiFn(api->getstringidentifier)(name); }
+        void getStringIdentifiers(const NPUTF8 **names, int32_t nameCount, NPIdentifier *identifiers) {
+            return apiFn(api->getstringidentifiers)(names, nameCount, identifiers); }
+        NPIdentifier getIntIdentifier(int32_t intid) {
+            return apiFn(api->getintidentifier)(intid); }
+        bool identifierIsString(NPIdentifier identifier) {
+            return apiFn(api->identifierisstring)(identifier); }
+        NPUTF8* utf8FromIdentifier(NPIdentifier identifier) {
+            return apiFn(api->utf8fromidentifier)(identifier); }
+        int32_t intFromIdentifier(NPIdentifier identifier) {
+            return apiFn(api->intfromidentifier)(identifier); }
 
 
         /* Networking, URL and stream support */
