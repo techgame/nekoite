@@ -208,6 +208,11 @@ namespace NPObjFramework {
             properties[name] = *value; 
             return true;
         }
+        virtual NPVariant* setPropertyByRef(NPIdentifier name) {
+            if (properties.count(name))
+                host->releaseVariantValue(&properties[name]);
+            return &properties[name];
+        }
         virtual bool removeProperty(NPIdentifier name) {
             if (!properties.count(name)) return false;
             host->releaseVariantValue(&properties[name]);
@@ -232,6 +237,17 @@ namespace NPObjFramework {
         inline bool removeProperty(uint32_t idxName) {
             return removeProperty(host->getIntIdentifier(idxName)); }
 
+        inline NPVariant* setPropertyByRef(const char* utf8Name) {
+            return setPropertyByRef(host->getStringIdentifier(utf8Name)); }
+        inline NPVariant* setPropertyByRef(uint32_t idxName) {
+            return setPropertyByRef(host->getIntIdentifier(idxName)); }
+
+        template <typename V>
+        inline bool setProperty(const char* utf8Name, V value) {
+            return setVariant(setPropertyByRef(utf8Name), value); }
+        template <typename V>
+        inline bool setProperty(uint32_t idxName, V value) {
+            return setVariant(setPropertyByRef(idxName), value); }
 
         /*~ Methods and Properties Enumeration ~~~~~~~~~~~~~~~*/
 
