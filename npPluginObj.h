@@ -91,8 +91,6 @@ namespace NPObjFramework {
         return NPERR_NO_ERROR;
     }
 
-    template <typename T, NPVariantType typeKey>
-    inline NPVariant* t_setVariant(NPVariant* r, T v) { r->type = typeKey; r->value = v; return r; }
     inline NPVariant* setVariantVoid(NPVariant* r) {
         r->type = NPVariantType_Void; r->value.objectValue = NULL; return r; }
     inline NPVariant* setVariantNull(NPVariant* r) {
@@ -113,6 +111,37 @@ namespace NPObjFramework {
         r->value.stringValue.UTF8Characters = str;
         r->value.stringValue.UTF8Length = len;
         return r;
+    }
+
+    inline bool* getVariant(NPVariant* r, bool** out) {
+        bool* res = NULL;
+        if (r && r->type == NPVariantType_Bool)
+            res = &r->value.boolValue;
+        return out ? *out = res : res;
+    }
+    inline int32_t* getVariant(NPVariant* r, int32_t** out) {
+        int32_t* res = NULL;
+        if (r && r->type == NPVariantType_Int32)
+            res = &r->value.intValue;
+        return out ? *out = res : res;
+    }
+    inline double* getVariant(NPVariant* r, double** out) {
+        double* res = NULL;
+        if (r && r->type == NPVariantType_Double)
+            res = &r->value.doubleValue;
+        return out ? *out = res : res;
+    }
+    inline NPObject* getVariant(NPVariant* r, NPObject** out) {
+        NPObject* res = NULL;
+        if (r && r->type == NPVariantType_Object)
+            res = r->value.objectValue;
+        return out ? *out = res : res;
+    }
+    inline NPString* getVariant(NPVariant* r, NPString** out) {
+        NPString* res = NULL;
+        if (r && r->type == NPVariantType_String)
+            res = &r->value.stringValue;
+        return out ? *out = res : res;
     }
 
 

@@ -143,6 +143,10 @@ namespace NPObjFramework {
             NPObject* res = NULL;
             return host->getValue(NPNVPluginElementNPObject, &res) ? NULL : res;
         }
+
+        inline NPIdentifier ident(NPIdentifier name) { return name; }
+        inline NPIdentifier ident(const char* utf8Name) { return host->getStringIdentifier(utf8Name); }
+        inline NPIdentifier ident(uint32_t idxName) { return host->getIntIdentifier(idxName); }
     };
 
     template <typename T>
@@ -180,13 +184,11 @@ namespace NPObjFramework {
                 registerMethod(methodTable->utf8Name, methodTable->fnMethod);
             return true;
         }
-        inline bool registerMethod(const char* utf8Name, ScriptMethod fnMethod) {
-            return !utf8Name ? false : registerMethod(host->getStringIdentifier(utf8Name), fnMethod); }
-        inline bool registerMethod(int32_t idxName, ScriptMethod fnMethod) {
-            return registerMethod(host->getIntIdentifier(idxName), fnMethod); }
+        template <typename N>
+        inline bool registerMethod(N name, ScriptMethod fnMethod) {
+            return registerMethod(ident(name), fnMethod); }
         virtual bool registerMethod(NPIdentifier name, ScriptMethod fnMethod) {
-            methods[name] = fnMethod;
-            return !!fnMethod; }
+            methods[name] = fnMethod; return !!fnMethod; }
 
 
         /*~ Properties ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
@@ -194,63 +196,75 @@ namespace NPObjFramework {
         typedef std::map<NPIdentifier, NPVariant> PropertyMap;
         typedef typename PropertyMap::iterator PropertyMapIter;
         PropertyMap properties;
+
+
+        /*~ hasProperty ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
         virtual bool hasProperty(NPIdentifier name) {
             return properties.count(name) > 0;
         }
+        template <typename N>
+        inline bool hasProperty(N name) {
+            return hasProperty(ident(name)); }
+
+
+        /*~ getProperty ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+        virtual NPVariant* getPropertyRef(NPIdentifier name) {
+            return properties.count(name) ? &properties[name] : NULL;
+        }
+        template <typename N>
+        inline NPVariant* getPropertyRef(N name) {
+            return getPropertyRef(ident(name)); }
         virtual bool getProperty(NPIdentifier name, NPVariant *result) {
             if (!properties.count(name)) return false;
             *result = properties[name];
             return true;
         }
+        template <typename N>
+        inline bool getProperty(N name, NPVariant *result) {
+            return getProperty(ident(name), result); }
+
+        template <typename V, typename N>
+        inline V* getProperty(N name, V** out) {
+            return getVariant(getPropertyRef(ident(name)), out); }
+
+
+        /*~ setProperty ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+        virtual NPVariant* setPropertyRef(NPIdentifier name) {
+            if (properties.count(name))
+                host->releaseVariantValue(&properties[name]);
+            return &properties[name];
+        }
+        template <typename N>
+        inline NPVariant* setPropertyRef(N name) {
+            return setPropertyRef(ident(name)); }
         virtual bool setProperty(NPIdentifier name, const NPVariant *value) {
             if (properties.count(name))
                 host->releaseVariantValue(&properties[name]);
             properties[name] = *value; 
             return true;
         }
-        virtual NPVariant* setPropertyByRef(NPIdentifier name) {
-            if (properties.count(name))
-                host->releaseVariantValue(&properties[name]);
-            return &properties[name];
-        }
+        template <typename N>
+        inline bool setProperty(N name, const NPVariant *value) {
+            return setProperty(ident(name), value); }
+
+        template <typename V, typename N>
+        inline bool setProperty(N name, V value) {
+            return setVariant(setPropertyRef(ident(name)), value); }
+
+
+        /*~ removeProperty ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
         virtual bool removeProperty(NPIdentifier name) {
             if (!properties.count(name)) return false;
             host->releaseVariantValue(&properties[name]);
             properties.erase(name);
             return true;
         }
+        template <typename N>
+        inline bool removeProperty(N name) {
+            return removeProperty(ident(name)); }
 
-        inline bool hasProperty(const char* utf8Name) {
-            return hasProperty(host->getStringIdentifier(utf8Name)); }
-        inline bool hasProperty(uint32_t idxName) {
-            return hasProperty(host->getIntIdentifier(idxName)); }
-        inline bool getProperty(const char* utf8Name, NPVariant *result) {
-            return getProperty(host->getStringIdentifier(utf8Name), result); }
-        inline bool getProperty(uint32_t idxName, NPVariant *result) {
-            return getProperty(host->getIntIdentifier(idxName), result); }
-        inline bool setProperty(const char* utf8Name, const NPVariant *value) {
-            return setProperty(host->getStringIdentifier(utf8Name), value); }
-        inline bool setProperty(uint32_t idxName, const NPVariant *value) {
-            return setProperty(host->getIntIdentifier(idxName), value); }
-        inline bool removeProperty(const char* utf8Name) {
-            return removeProperty(host->getStringIdentifier(utf8Name)); }
-        inline bool removeProperty(uint32_t idxName) {
-            return removeProperty(host->getIntIdentifier(idxName)); }
-
-        inline NPVariant* setPropertyByRef(const char* utf8Name) {
-            return setPropertyByRef(host->getStringIdentifier(utf8Name)); }
-        inline NPVariant* setPropertyByRef(uint32_t idxName) {
-            return setPropertyByRef(host->getIntIdentifier(idxName)); }
-
-        template <typename V>
-        inline bool setProperty(const char* utf8Name, V value) {
-            return setVariant(setPropertyByRef(utf8Name), value); }
-        template <typename V>
-        inline bool setProperty(uint32_t idxName, V value) {
-            return setVariant(setPropertyByRef(idxName), value); }
 
         /*~ Methods and Properties Enumeration ~~~~~~~~~~~~~~~*/
-
         virtual bool enumerate(NPIdentifier **value, uint32_t *count) {
             NPIdentifier *tip, *buf;
             uint32_t nElems = methods.size() + properties.size();
