@@ -47,6 +47,8 @@ namespace NPObjFramework {
 
     struct NPScriptObj : NPObject {
         NPScriptObj(NPP npp, NPClass *aClass) { _class = aClass; referenceCount = 1; }
+        virtual ~NPScriptObj() {};
+        virtual bool isValid() { return true; }
 
         virtual void deallocate() {}
         virtual void invalidate() {}
@@ -65,7 +67,8 @@ namespace NPObjFramework {
     };
 
     inline NPScriptObj* asNSScriptable(NPObject* npobj) {
-        return static_cast<NPScriptObj*>(npobj);
+        NPScriptObj* res = static_cast<NPScriptObj*>(npobj);
+        return res && res->isValid() ? res : NULL;
     }
 
     /*~ NPClass providers for NPScriptObj objects ~~~~~~~*/
@@ -89,30 +92,41 @@ namespace NPObjFramework {
 
     protected:
         static void _deallocate(NPObject *npobj) {
-            if (npobj) asNSScriptable(npobj)->deallocate(); }
+            NPScriptObj* obj = asNSScriptable(npobj);
+            if (obj) obj->deallocate(); }
         static void _invalidate(NPObject *npobj) {
-            if (npobj) asNSScriptable(npobj)->invalidate(); }
+            NPScriptObj* obj = asNSScriptable(npobj);
+            if (obj) asNSScriptable(npobj)->invalidate(); }
 
         static bool _hasMethod(NPObject *npobj, NPIdentifier name) {
-            return !npobj ? false : asNSScriptable(npobj)->hasMethod(name); }
+            NPScriptObj* obj = asNSScriptable(npobj);
+            return !obj ? false : obj->hasMethod(name); }
         static bool _invoke(NPObject *npobj, NPIdentifier name, const NPVariant *args, uint32_t argCount, NPVariant *result) {
-            return !npobj ? false : asNSScriptable(npobj)->invoke(name, args, argCount, result); }
+            NPScriptObj* obj = asNSScriptable(npobj);
+            return !obj ? false : obj->invoke(name, args, argCount, result); }
         static bool _invokeDefault(NPObject *npobj, const NPVariant *args, uint32_t argCount, NPVariant *result) {
-            return !npobj ? false : asNSScriptable(npobj)->invokeDefault(args, argCount, result); }
+            NPScriptObj* obj = asNSScriptable(npobj);
+            return !obj ? false : obj->invokeDefault(args, argCount, result); }
         static bool _construct(NPObject *npobj, const NPVariant *args, uint32_t argCount, NPVariant *result) {
-            return !npobj ? false : asNSScriptable(npobj)->construct(args, argCount, result); }
+            NPScriptObj* obj = asNSScriptable(npobj);
+            return !obj ? false : obj->construct(args, argCount, result); }
 
         static bool _hasProperty(NPObject *npobj, NPIdentifier name) {
-            return !npobj ? false : asNSScriptable(npobj)->hasProperty(name); }
+            NPScriptObj* obj = asNSScriptable(npobj);
+            return !obj ? false : obj->hasProperty(name); }
         static bool _getProperty(NPObject *npobj, NPIdentifier name, NPVariant *result) {
-            return !npobj ? false : asNSScriptable(npobj)->getProperty(name, result); }
+            NPScriptObj* obj = asNSScriptable(npobj);
+            return !obj ? false : obj->getProperty(name, result); }
         static bool _setProperty(NPObject *npobj, NPIdentifier name, const NPVariant *value) {
-            return !npobj ? false : asNSScriptable(npobj)->setProperty(name, value); }
+            NPScriptObj* obj = asNSScriptable(npobj);
+            return !obj ? false : obj->setProperty(name, value); }
         static bool _removeProperty(NPObject *npobj, NPIdentifier name) {
-            return !npobj ? false : asNSScriptable(npobj)->removeProperty(name); }
+            NPScriptObj* obj = asNSScriptable(npobj);
+            return !obj ? false : obj->removeProperty(name); }
 
         static bool _enumerate(NPObject *npobj, NPIdentifier **value, uint32_t *count) {
-            return !npobj ? false : asNSScriptable(npobj)->enumerate(value, count); }
+            NPScriptObj* obj = asNSScriptable(npobj);
+            return !obj ? false : obj->enumerate(value, count); }
     };
 
     template <typename T>
@@ -151,18 +165,23 @@ namespace NPObjFramework {
 
     template <typename T>
     struct NPScriptObjStd : NPScriptObjEx {
-        NPScriptObjStd(NPP npp, NPClass *aClass)
-            : NPScriptObjEx(npp, aClass) {}
+        typedef bool (T::*ScriptMethod)(NPIdentifier name, const NPVariant *args, uint32_t argCount, NPVariant *result);
+        typedef struct {bool isProperty; const char* utf8Name; ScriptMethod fnMethod; } MethodTableEntry;
+        typedef std::map<NPIdentifier, ScriptMethod> MethodMap;
+        typedef typename MethodMap::iterator MethodMapIter;
+        typedef std::map<NPIdentifier, NPVariant> PropertyMap;
+        typedef typename PropertyMap::iterator PropertyMapIter;
+
+        MethodMap methods;
+        PropertyMap properties;
+        MethodMap propertyMethods;
+
+        NPScriptObjStd(NPP npp, NPClass *aClass) : NPScriptObjEx(npp, aClass) { }
+        virtual ~NPScriptObjStd() {}
 
         virtual T* self() = 0;
 
         /*~ Methods ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-
-        typedef bool (T::*ScriptMethod)(NPIdentifier name, const NPVariant *args, uint32_t argCount, NPVariant *result);
-        typedef struct {const char* utf8Name; ScriptMethod fnMethod; } MethodTableEntry;
-        typedef std::map<NPIdentifier, ScriptMethod> MethodMap;
-        typedef typename MethodMap::iterator MethodMapIter;
-        MethodMap methods;
 
         virtual bool hasMethod(NPIdentifier name) {
             return methods.count(name) > 0;
@@ -181,26 +200,25 @@ namespace NPObjFramework {
         bool registerMethodTable(MethodTableEntry* methodTable) {
             if (!methodTable) return false;
             for(; !!methodTable->utf8Name; methodTable++)
-                registerMethod(methodTable->utf8Name, methodTable->fnMethod);
+                registerMethod(methodTable->utf8Name, methodTable->fnMethod, methodTable->isProperty);
             return true;
         }
         template <typename N>
-        inline bool registerMethod(N name, ScriptMethod fnMethod) {
-            return registerMethod(ident(name), fnMethod); }
-        virtual bool registerMethod(NPIdentifier name, ScriptMethod fnMethod) {
-            methods[name] = fnMethod; return !!fnMethod; }
-
-
-        /*~ Properties ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-
-        typedef std::map<NPIdentifier, NPVariant> PropertyMap;
-        typedef typename PropertyMap::iterator PropertyMapIter;
-        PropertyMap properties;
+        inline bool registerMethod(N name, ScriptMethod fnMethod, bool isProperty=false) {
+            return registerMethod(ident(name), fnMethod, isProperty); }
+        virtual bool registerMethod(NPIdentifier name, ScriptMethod fnMethod, bool isProperty=false) {
+            if (isProperty)
+                propertyMethods[name] = fnMethod;
+            else methods[name] = fnMethod;
+            return !!fnMethod;
+        }
 
 
         /*~ hasProperty ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
         virtual bool hasProperty(NPIdentifier name) {
-            return properties.count(name) > 0;
+            if (properties.count(name) > 0) return true;
+            if (propertyMethods.count(name) > 0) return true;
+            return false;
         }
         template <typename N>
         inline bool hasProperty(N name) {
@@ -215,9 +233,13 @@ namespace NPObjFramework {
         inline NPVariant* getPropertyRef(N name) {
             return getPropertyRef(ident(name)); }
         virtual bool getProperty(NPIdentifier name, NPVariant *result) {
-            if (!properties.count(name)) return false;
-            *result = properties[name];
-            return true;
+            if (properties.count(name)>0) {
+                *result = properties[name];
+                return true;
+            } else if (propertyMethods.count(name)>0) {
+                ScriptMethod fn = propertyMethods[name];
+                return fn ? (self()->*fn)(name, NULL, 0, result) : false;
+            } else return false;
         }
         template <typename N>
         inline bool getProperty(N name, NPVariant *result) {
@@ -238,7 +260,10 @@ namespace NPObjFramework {
         inline NPVariant* setPropertyRef(N name) {
             return setPropertyRef(ident(name)); }
         virtual bool setProperty(NPIdentifier name, const NPVariant *value) {
-            if (properties.count(name))
+            if (propertyMethods.count(name)>0) {
+                ScriptMethod fn = propertyMethods[name];
+                return fn ? (self()->*fn)(name, value, 1, NULL) : false;
+            } else if (properties.count(name))
                 host->releaseVariantValue(&properties[name]);
             properties[name] = *value; 
             return true;
@@ -267,15 +292,23 @@ namespace NPObjFramework {
         /*~ Methods and Properties Enumeration ~~~~~~~~~~~~~~~*/
         virtual bool enumerate(NPIdentifier **value, uint32_t *count) {
             NPIdentifier *tip, *buf;
-            uint32_t nElems = methods.size() + properties.size();
+            uint32_t nElems = properties.size()
+                + propertyMethods.size() + methods.size();
             tip = buf = (NPIdentifier*) host->memAlloc(nElems*sizeof(NPIdentifier));
 
             PropertyMapIter itProp=properties.begin(); 
             for (; itProp!=properties.end(); ++itProp) {
                 *(tip++) = itProp->first; }
 
-            MethodMapIter itMeth=methods.begin();
-            for (; itMeth!=methods.end(); ++itMeth) {
+            MethodMapIter
+                itMeth=propertyMethods.begin(),
+                itMethEnd=propertyMethods.end();
+            for (; itMeth!=itMethEnd; ++itMeth) {
+                *(tip++) = itMeth->first; }
+
+            itMeth=methods.begin();
+            itMethEnd=methods.end();
+            for (; itMeth!=itMethEnd; ++itMeth) {
                 *(tip++) = itMeth->first; }
 
             *value = buf; *count = nElems;
