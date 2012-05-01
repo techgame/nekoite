@@ -8,8 +8,8 @@
  *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 #pragma once
 
-#include "npapi.h"
-#include "npfunctions.h"
+#include "npapi/npapi.h"
+#include "npapi/npfunctions.h"
 
 extern "C" {
     NPError NP_Initialize(NPNetscapeFuncs *browserApi);

@@ -10,7 +10,7 @@
 #include <map> /* used to implement NPScriptObjStd */
 
 #include "npPluginObj.h"
-#include "npruntime.h"
+#include "npapi/npruntime.h"
 
 namespace NPObjFramework {
     /*~ Scriptable Plugin Obj Definition ~~~~~~~~~~~~~~~~~*/
