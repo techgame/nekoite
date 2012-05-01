@@ -148,19 +148,29 @@ namespace NPObjFramework {
     inline const NPVariant* asVariantArgAt(uint32_t argIdx, const NPVariant* args, uint32_t argCount, NPVariantType typeKey) {
         return (argIdx<argCount && (typeKey == args[argIdx].type)) ? &args[argIdx] : NULL; }
 
-    inline const bool* variantArg(const bool* out, uint32_t argIdx, const NPVariant *args, uint32_t argCount) {
+    inline bool variantArg(const bool** out, uint32_t argIdx, const NPVariant *args, uint32_t argCount) {
         args = asVariantArgAt(argIdx, args, argCount, NPVariantType_Bool);
-        return out = args ? &args->value.boolValue : NULL; }
-    inline const int32_t* variantArg(const int32_t* out, uint32_t argIdx, const NPVariant *args, uint32_t argCount) {
+        if (out) *out = (args ? &args->value.boolValue : NULL);
+        return !!args;
+    }
+    inline bool variantArg(const int32_t** out, uint32_t argIdx, const NPVariant *args, uint32_t argCount) {
         args = asVariantArgAt(argIdx, args, argCount, NPVariantType_Int32);
-        return out = args ? &args->value.intValue : NULL; }
-    inline const double* variantArg(const double* out, uint32_t argIdx, const NPVariant *args, uint32_t argCount) {
+        if (out) *out = (args ? &args->value.intValue : NULL);
+        return !!args;
+    }
+    inline bool variantArg(const double** out, uint32_t argIdx, const NPVariant *args, uint32_t argCount) {
         args = asVariantArgAt(argIdx, args, argCount, NPVariantType_Double);
-        return out = args ? &args->value.doubleValue : NULL; }
-    inline NPObject* const* variantArg(NPObject* const* out, uint32_t argIdx, const NPVariant *args, uint32_t argCount) {
+        if (out) *out = (args ? &args->value.doubleValue : NULL);
+        return !!args;
+    }
+    inline bool variantArg(NPObject* const** out, uint32_t argIdx, const NPVariant *args, uint32_t argCount) {
         args = asVariantArgAt(argIdx, args, argCount, NPVariantType_Object);
-        return out = args ? &args->value.objectValue : NULL; }
-    inline const NPString* variantArg(const NPString* out, uint32_t argIdx, const NPVariant *args, uint32_t argCount) {
+        if (out) *out = (args ? &args->value.objectValue : NULL);
+        return !!args;
+    }
+    inline bool variantArg(const NPString** out, uint32_t argIdx, const NPVariant *args, uint32_t argCount) {
         args = asVariantArgAt(argIdx, args, argCount, NPVariantType_String);
-        return out = args ? &args->value.stringValue : NULL; }
+        if (out) *out = (args ? &args->value.stringValue : NULL);
+        return !!args;
+    }
 }
