@@ -7,9 +7,7 @@
  *~ found in the LICENSE file included with this distribution.    ~*
  *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 #pragma once
-
-#include "npapi/npapi.h"
-#include "npapi/npfunctions.h"
+#include "npObjFramework.h"
 
 namespace NPObjFramework {
 

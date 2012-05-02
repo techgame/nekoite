@@ -6,29 +6,26 @@
  *~ and/or modify it under the terms of the MIT style License as  ~*
  *~ found in the LICENSE file included with this distribution.    ~*
  *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-
-#include "npObjApi.h"
-#include "npHostObj.h"
-#include "npPluginObj.h"
+#include "npObjFramework.h"
 
 using namespace NPObjFramework;
 
 static NPNetscapeFuncs* g_hostApi;
 
-#if !defined(XP_UNIX) || defined(XP_MACOSX)
-NPError NP_Initialize(NPNetscapeFuncs* hostApi) {
+#if !defined(XP_UNIX) || defined(XP_MACOSX) || defined(XP_WIN)
+NPError OSCALL NP_Initialize(NPNetscapeFuncs* hostApi) {
     g_hostApi = hostApi;
     return NPERR_NO_ERROR;
 }
 #else
-NPError NP_Initialize(NPNetscapeFuncs* hostApi, NPPluginFuncs* pluginApi) {
+NPError OSCALL NP_Initialize(NPNetscapeFuncs* hostApi, NPPluginFuncs* pluginApi) {
     NP_GetEntryPoints(pluginApi);
     g_hostApi = hostApi;
     return NPERR_NO_ERROR;
 }
 #endif
 
-NPError NP_GetEntryPoints(NPPluginFuncs* pluginApi) {
+NPError OSCALL NP_GetEntryPoints(NPPluginFuncs* pluginApi) {
     uint16_t lastEntry = pluginApi->size - sizeof(void*);
     if (lastEntry < offsetof(NPPluginFuncs, setvalue))
         return NPERR_INVALID_FUNCTABLE_ERROR;
@@ -54,11 +51,11 @@ NPError NP_GetEntryPoints(NPPluginFuncs* pluginApi) {
     if (lastEntry >= offsetof(NPPluginFuncs, urlredirectnotify)) {
         pluginApi->urlredirectnotify = NPP_URLRedirectNotify;
     }
-
     return NPERR_NO_ERROR;
 }
 
-void NP_Shutdown(void) {
+NPError OSCALL NP_Shutdown(void) {
+    return NPERR_NO_ERROR;
 }
 
 
@@ -134,19 +131,19 @@ void NPP_StreamAsFile(NPP instance, NPStream* stream, const char* fname) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
         if (obj) obj->streamAsFile(stream, fname);
-    } catch (NPException exc) { return; }
+    } catch (NPException) { return; }
 }
 void NPP_URLNotify(NPP instance, const char* url, NPReason reason, void* notifyData) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
         if (obj) obj->urlNotify(url, reason, notifyData);
-    } catch (NPException exc) { return; }
+    } catch (NPException) { return; }
 }
 void NPP_URLRedirectNotify(NPP instance, const char* url, int32_t status, void* notifyData) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
         if (obj) obj->urlRedirectNotify(url, status, notifyData);
-    } catch (NPException exc) { return; }
+    } catch (NPException) { return; }
 }
 
 
@@ -161,7 +158,7 @@ void NPP_Print(NPP instance, NPPrint* platformPrint) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
         if (obj) obj->print(platformPrint);
-    } catch (NPException exc) { return; }
+    } catch (NPException) { return; }
 }
 int16_t NPP_HandleEvent(NPP instance, void* event) {
     try {
@@ -173,13 +170,12 @@ int16_t NPP_HandleEvent(NPP instance, void* event) {
 NPBool NPP_GotFocus(NPP instance, NPFocusDirection direction) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
-        return !obj ? NPERR_INVALID_INSTANCE_ERROR
-            : obj->gotFocus(direction);
-    } catch (NPException exc) { return exc.err; }
+        return !obj ? false : obj->gotFocus(direction);
+    } catch (NPException) { return false; }
 }
 void NPP_LostFocus(NPP instance) {
     try {
         NPPluginObj* obj = asNSPluginObj(instance);
         if (obj) obj->lostFocus();
-    } catch (NPException exc) { return; }
+    } catch (NPException) { return; }
 }

@@ -7,10 +7,7 @@
  *~ found in the LICENSE file included with this distribution.    ~*
  *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 #pragma once
-#include <map> /* used to implement NPScriptObjStd */
-
-#include "npPluginObj.h"
-#include "npapi/npruntime.h"
+#include "npObjFramework.h"
 
 namespace NPObjFramework {
     /*~ Scriptable Plugin Obj Definition ~~~~~~~~~~~~~~~~~*/

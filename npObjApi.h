@@ -7,14 +7,12 @@
  *~ found in the LICENSE file included with this distribution.    ~*
  *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 #pragma once
-
-#include "npapi/npapi.h"
-#include "npapi/npfunctions.h"
+#include "npObjFramework.h"
 
 extern "C" {
-    NPError NP_Initialize(NPNetscapeFuncs *browserApi);
-    NPError NP_GetEntryPoints(NPPluginFuncs *pluginApi);
-    void NP_Shutdown(void);
+    NPError OSCALL NP_Initialize(NPNetscapeFuncs *browserApi);
+    NPError OSCALL NP_GetEntryPoints(NPPluginFuncs *pluginApi);
+    NPError OSCALL NP_Shutdown(void);
 
     NPError NPP_New(NPMIMEType pluginType, NPP instance, uint16_t mode, int16_t argc, char* argn[], char* argv[], NPSavedData* saved);
     NPError NPP_Destroy(NPP instance, NPSavedData** save);
