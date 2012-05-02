@@ -1,3 +1,4 @@
+/* -*- coding: utf-8 -*- vim: set ts=4 sw=4 expandtab */
 #if defined(__APPLE__)
 
 void npObjFramework_log_v(const char* fmt, va_list args) {
