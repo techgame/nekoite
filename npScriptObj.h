@@ -43,8 +43,13 @@ namespace NPObjFramework {
     /*~ NPObject virtualized skeleton ~~~~~~~~~~~~~~~~~~~~*/
 
     struct NPScriptObj : NPObject {
-        NPScriptObj(NPP npp, NPClass *aClass) { _class = aClass; referenceCount = 1; }
+        NPHostObj* host;
+
+        NPScriptObj(NPP npp, NPClass *aClass) : host(asNPHostObj(npp)) {
+            _class = aClass; referenceCount = 1;
+        }
         virtual ~NPScriptObj() {};
+        virtual const char* className() { return "NPScriptObj"; }
         virtual bool isValid() { return true; }
 
         virtual void deallocate() {}
@@ -61,17 +66,65 @@ namespace NPObjFramework {
         virtual bool removeProperty(NPIdentifier name) { return false; }
 
         virtual bool enumerate(NPIdentifier **value, uint32_t *count) { return false; }
+
+        /* NPHost interface utilities */
+        NPObject* domWindow() {
+            NPObject* res = NULL;
+            return host && (0!=host->getValue(NPNVWindowNPObject, &res)) ? res : NULL;
+        }
+        NPObject* domElement() {
+            NPObject* res = NULL;
+            return host && (0!=host->getValue(NPNVPluginElementNPObject, &res)) ? res : NULL;
+        }
+
+        inline NPIdentifier ident(NPIdentifier name) { return name; }
+        inline NPIdentifier ident(const char* utf8Name) { return host->getStringIdentifier(utf8Name); }
+        inline NPIdentifier ident(uint32_t idxName) { return host->getIntIdentifier(idxName); }
+        std::string identStr(NPIdentifier name) {
+            NPUTF8* szName = host->utf8FromIdentifier(name);
+            std::string res(szName);
+            host->memFree(szName);
+            return res; }
+        
+        
+        inline NPVariant* setVariantVoid(NPVariant* r) {
+            r->type = NPVariantType_Void; r->value.objectValue = NULL; return r; }
+        inline NPVariant* setVariantNull(NPVariant* r) {
+            r->type = NPVariantType_Null; r->value.objectValue = NULL; return r; }
+        
+        inline NPVariant* setVariant(NPVariant* r, bool v) {
+            r->type = NPVariantType_Bool; r->value.boolValue = v; return r; }
+        inline NPVariant* setVariant(NPVariant* r, int32_t v) {
+            r->type = NPVariantType_Int32; r->value.intValue = v; return r; }
+        inline NPVariant* setVariant(NPVariant* r, double v) {
+            r->type = NPVariantType_Double; r->value.doubleValue = v; return r; }
+        inline NPVariant* setVariant(NPVariant* r, NPObject* v) {
+            r->type = NPVariantType_Object; r->value.objectValue = v; return r; }
+        inline NPVariant* setVariant(NPVariant* r, NPString v) {
+            r->type = NPVariantType_String; r->value.stringValue = v; return r; }
+        inline NPVariant* setVariant(NPVariant* r, const NPUTF8* str, size_t len=0, size_t maxlen=1024) {
+            r->type = NPVariantType_String;
+            NPString& sz = r->value.stringValue;
+
+            if (len == 0) len = ::strnlen(str, maxlen);
+            char* buf = (char*) host->memAlloc(len);
+            ::strncpy(buf, str, len);
+            sz.UTF8Characters = buf;
+            sz.UTF8Length = len;
+            return r;
+        }
     };
 
-    inline NPScriptObj* asNSScriptable(NPObject* npobj) {
-        NPScriptObj* res = static_cast<NPScriptObj*>(npobj);
-        return res && res->isValid() ? res : NULL;
+    inline NPScriptObj* asNPScriptObj(NPObject* npobj) {
+        NPScriptObj* obj = static_cast<NPScriptObj*>(npobj);
+        return obj && obj->isValid() ? obj : NULL;
     }
 
     /*~ NPClass providers for NPScriptObj objects ~~~~~~~*/
 
-    struct NPScriptClassBase : NPClass {
-        NPScriptClassBase(NPAllocateFunctionPtr _allocate) {
+    template <typename T>
+    struct NPScriptClass : NPClass {
+        NPScriptClass() {
             structVersion = NP_CLASS_STRUCT_VERSION_CTOR;
             allocate = _allocate;
             deallocate = _deallocate;
@@ -87,81 +140,86 @@ namespace NPObjFramework {
             construct = _construct;
         }
 
+        NPObject* createObject(NPP npp) { 
+            return asNPHostObj(npp)->createObject((NPClass*)this); }
+        T* create(NPP npp) {
+            //return (T*) createObject(npp); 
+            return (T*) createInstance(npp, this); 
+        }
+        static const char* className() { return T::s_className(); }
+
     protected:
+        static void log(const char* className, const char* method, const char* attrName=NULL) {
+            if (attrName)
+                npObjFramework_log("%s::%s(%s)\n", className, method, attrName);
+            else npObjFramework_log("%s::%s()\n", className, method); }
+        static void log(NPScriptObj* obj, const char* method) {
+            if (obj) log(obj->className(), method);
+            else log(className(), method); }
+        static void log(NPScriptObj* obj, const char* method, NPIdentifier name) {
+            if (obj) log(obj->className(), method, obj->identStr(name).c_str());
+            else log(className(), method, "???"); }
+        
+    protected:
+        static T* createInstance(NPP npp, NPClass *aClass) {
+            return new T(npp, aClass); }
+        static NPObject* _allocate(NPP npp, NPClass *aClass) {
+            log(className(), "allocate");
+            return createInstance(npp, aClass); }        
         static void _deallocate(NPObject *npobj) {
-            NPScriptObj* obj = asNSScriptable(npobj);
+            NPScriptObj* obj = asNPScriptObj(npobj);
+            log(className(), "deallocate");
             if (obj) obj->deallocate(); }
         static void _invalidate(NPObject *npobj) {
-            NPScriptObj* obj = asNSScriptable(npobj);
-            if (obj) asNSScriptable(npobj)->invalidate(); }
+            NPScriptObj* obj = asNPScriptObj(npobj);
+            log(className(), "invalidate");
+            if (obj) obj->invalidate(); }
 
         static bool _hasMethod(NPObject *npobj, NPIdentifier name) {
-            NPScriptObj* obj = asNSScriptable(npobj);
+            NPScriptObj* obj = asNPScriptObj(npobj);
+            log(obj, "hasMethod", name);
             return !obj ? false : obj->hasMethod(name); }
         static bool _invoke(NPObject *npobj, NPIdentifier name, const NPVariant *args, uint32_t argCount, NPVariant *result) {
-            NPScriptObj* obj = asNSScriptable(npobj);
+            NPScriptObj* obj = asNPScriptObj(npobj);
+            log(obj, "invoke", name);
             return !obj ? false : obj->invoke(name, args, argCount, result); }
         static bool _invokeDefault(NPObject *npobj, const NPVariant *args, uint32_t argCount, NPVariant *result) {
-            NPScriptObj* obj = asNSScriptable(npobj);
+            NPScriptObj* obj = asNPScriptObj(npobj);
+            log(obj, "invokeDefault");
             return !obj ? false : obj->invokeDefault(args, argCount, result); }
         static bool _construct(NPObject *npobj, const NPVariant *args, uint32_t argCount, NPVariant *result) {
-            NPScriptObj* obj = asNSScriptable(npobj);
+            NPScriptObj* obj = asNPScriptObj(npobj);
+            log(obj, "construct");
             return !obj ? false : obj->construct(args, argCount, result); }
 
         static bool _hasProperty(NPObject *npobj, NPIdentifier name) {
-            NPScriptObj* obj = asNSScriptable(npobj);
+            NPScriptObj* obj = asNPScriptObj(npobj);
+            log(obj, "hasProperty", name);
             return !obj ? false : obj->hasProperty(name); }
         static bool _getProperty(NPObject *npobj, NPIdentifier name, NPVariant *result) {
-            NPScriptObj* obj = asNSScriptable(npobj);
+            NPScriptObj* obj = asNPScriptObj(npobj);
+            log(obj, "getProperty", name);
             return !obj ? false : obj->getProperty(name, result); }
         static bool _setProperty(NPObject *npobj, NPIdentifier name, const NPVariant *value) {
-            NPScriptObj* obj = asNSScriptable(npobj);
+            NPScriptObj* obj = asNPScriptObj(npobj);
+            log(obj, "setProperty", name);
             return !obj ? false : obj->setProperty(name, value); }
         static bool _removeProperty(NPObject *npobj, NPIdentifier name) {
-            NPScriptObj* obj = asNSScriptable(npobj);
+            NPScriptObj* obj = asNPScriptObj(npobj);
+            log(obj, "removeProperty", name);
             return !obj ? false : obj->removeProperty(name); }
 
         static bool _enumerate(NPObject *npobj, NPIdentifier **value, uint32_t *count) {
-            NPScriptObj* obj = asNSScriptable(npobj);
+            NPScriptObj* obj = asNPScriptObj(npobj);
+            log(obj, "enumerate");
             return !obj ? false : obj->enumerate(value, count); }
-    };
-
-    template <typename T>
-    struct  NPScriptClass : NPScriptClassBase {
-        NPScriptClass() : NPScriptClassBase(_allocate) {}
-        
-        inline T* create(NPP npp) { return createInstance(npp, this); }
-    protected:
-        inline static T* createInstance(NPP npp, NPClass *aClass) { return new T(npp, aClass); }
-        static NPObject* _allocate(NPP npp, NPClass *aClass) { return createInstance(npp, aClass); }
     };
 
 
     /*~ Composed ScriptObj derivatives ~~~~~~~~~~~~~~~~~~~*/
 
-    struct NPScriptObjEx : NPScriptObj {
-        NPHostObj* host;
-
-        NPScriptObjEx(NPP npp, NPClass *aClass)
-          : NPScriptObj(npp, aClass), host(asNSPluginObj(npp)->hostObj())
-        {}
-
-        virtual NPObject* domWindow() {
-            NPObject* res = NULL;
-            return host->getValue(NPNVWindowNPObject, &res) ? NULL : res;
-        }
-        virtual NPObject* domElement() {
-            NPObject* res = NULL;
-            return host->getValue(NPNVPluginElementNPObject, &res) ? NULL : res;
-        }
-
-        inline NPIdentifier ident(NPIdentifier name) { return name; }
-        inline NPIdentifier ident(const char* utf8Name) { return host->getStringIdentifier(utf8Name); }
-        inline NPIdentifier ident(uint32_t idxName) { return host->getIntIdentifier(idxName); }
-    };
-
     template <typename T>
-    struct NPScriptObjStd : NPScriptObjEx {
+    struct NPScriptObjStd : NPScriptObj {
         typedef bool (T::*ScriptMethod)(NPIdentifier name, const NPVariant *args, uint32_t argCount, NPVariant *result);
         typedef struct {bool isProperty; const char* utf8Name; ScriptMethod fnMethod; } MethodTableEntry;
         typedef std::map<NPIdentifier, ScriptMethod> MethodMap;
@@ -173,10 +231,11 @@ namespace NPObjFramework {
         PropertyMap properties;
         MethodMap propertyMethods;
 
-        NPScriptObjStd(NPP npp, NPClass *aClass) : NPScriptObjEx(npp, aClass) { }
+        NPScriptObjStd(NPP npp, NPClass *aClass) : NPScriptObj(npp, aClass) {}
         virtual ~NPScriptObjStd() {}
 
         virtual T* self() = 0;
+        virtual const char* className() { return T::s_className(); }
 
         /*~ Methods ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
@@ -215,6 +274,7 @@ namespace NPObjFramework {
         virtual bool hasProperty(NPIdentifier name) {
             if (properties.count(name) > 0) return true;
             if (propertyMethods.count(name) > 0) return true;
+            if (methods.count(name) > 0) return false;
             return false;
         }
         template <typename N>
@@ -311,6 +371,16 @@ namespace NPObjFramework {
             *value = buf; *count = nElems;
             return true;
         }
+        
+        virtual bool prop_className(NPIdentifier, const NPVariant *args, uint32_t argCount, NPVariant *result) {
+            if (argCount == 0) {
+                if (result) setVariant(result, className());
+                return true;
+            } else {
+                if (result) setVariantVoid(result);
+                return false;
+            }
+        }
     };
 
     /* 
@@ -321,6 +391,7 @@ namespace NPObjFramework {
             registerMethod("example", &ExampleObj::example);
         }
         virtual ExampleObj* self() { return this; }
+        static const char* s_className() { return "ExampleObj"; }
 
         virtual bool example(NPIdentifier, const NPVariant *args, uint32_t argCount, NPVariant *result) {
             return true;

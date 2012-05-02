@@ -12,6 +12,7 @@
 namespace NPObjFramework {
 
     struct NPPluginObj {
+        virtual ~NPPluginObj() {}
         virtual NPError initialize(NPMIMEType pluginType, uint16_t mode, 
             int16_t argc, char* argn[], char* argv[], NPSavedData* saved) = 0;
         virtual NPError destroy(NPSavedData** save) = 0;
@@ -37,13 +38,18 @@ namespace NPObjFramework {
         inline operator NPP() const { return hostObj()->instance; }
     };
 
-    inline NPPluginObj* asNSPluginObj(NPP instance) {
+    inline NPPluginObj* asNPPluginObj(NPP instance) {
         return static_cast<NPPluginObj*>(instance?instance->pdata:NULL);
+    }
+    inline NPHostObj* asNPHostObj(NPP instance) {
+        NPPluginObj* plugin = asNPPluginObj(instance);
+        return plugin ? plugin->hostObj() : NULL;
     }
 }
 
 /* implement createNPPluginObj to create concrete instance of an NPPluginObj */
 NPObjFramework::NPPluginObj* createNPPluginObj(NPP pluginInstance, NPNetscapeFuncs* hostApi);
+NPObjFramework::NPPluginObj* destroyNPPluginObj(NPP inst, NPObjFramework::NPPluginObj* obj);
 
 
 namespace NPObjFramework {
@@ -71,10 +77,7 @@ namespace NPObjFramework {
         virtual NPError initArg(uint16_t argIdx, char* name, char* value) { return NPERR_NO_ERROR; }
         virtual NPError initFinish(NPMIMEType pluginType, uint16_t mode) { return NPERR_NO_ERROR; }
 
-        virtual NPError destroy(NPSavedData** save) {
-            delete this;
-            return NPERR_NO_ERROR;
-        }
+        virtual NPError destroy(NPSavedData** save) { return NPERR_NO_ERROR; }
     };
 }
 
@@ -103,7 +106,9 @@ namespace NPObjFramework {
         r->type = NPVariantType_Object; r->value.objectValue = v; return r; }
     inline NPVariant* setVariant(NPVariant* r, NPString v) {
         r->type = NPVariantType_String; r->value.stringValue = v; return r; }
-    inline NPVariant* setVariant(NPVariant* r, const NPUTF8* str, uint32_t len) {
+    inline NPVariant* setVariant(NPVariant* r, const NPUTF8* str, size_t len=0, size_t maxlen=1024) {
+        if (len == 0) len = ::strnlen(str, maxlen);
+        
         r->type = NPVariantType_String;
         r->value.stringValue.UTF8Characters = str;
         r->value.stringValue.UTF8Length = len;
