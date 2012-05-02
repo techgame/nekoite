@@ -91,30 +91,6 @@ namespace NPObjFramework {
         return NPERR_NO_ERROR;
     }
 
-    inline NPVariant* setVariantVoid(NPVariant* r) {
-        r->type = NPVariantType_Void; r->value.objectValue = NULL; return r; }
-    inline NPVariant* setVariantNull(NPVariant* r) {
-        r->type = NPVariantType_Null; r->value.objectValue = NULL; return r; }
-
-    inline NPVariant* setVariant(NPVariant* r, bool v) {
-        r->type = NPVariantType_Bool; r->value.boolValue = v; return r; }
-    inline NPVariant* setVariant(NPVariant* r, int32_t v) {
-        r->type = NPVariantType_Int32; r->value.intValue = v; return r; }
-    inline NPVariant* setVariant(NPVariant* r, double v) {
-        r->type = NPVariantType_Double; r->value.doubleValue = v; return r; }
-    inline NPVariant* setVariant(NPVariant* r, NPObject* v) {
-        r->type = NPVariantType_Object; r->value.objectValue = v; return r; }
-    inline NPVariant* setVariant(NPVariant* r, NPString v) {
-        r->type = NPVariantType_String; r->value.stringValue = v; return r; }
-    inline NPVariant* setVariant(NPVariant* r, const NPUTF8* str, size_t len=0, size_t maxlen=1024) {
-        if (len == 0) len = ::strnlen(str, maxlen);
-        
-        r->type = NPVariantType_String;
-        r->value.stringValue.UTF8Characters = str;
-        r->value.stringValue.UTF8Length = len;
-        return r;
-    }
-
     inline bool* getVariant(NPVariant* r, bool** out) {
         bool* res = NULL;
         if (r && r->type == NPVariantType_Bool)

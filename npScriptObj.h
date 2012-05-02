@@ -17,8 +17,8 @@ namespace NPObjFramework {
             : NPPluginObjBase(inst, hostApi) {}
 
         virtual NPError initStart(NPMIMEType pluginType, uint16_t mode) {
-            NPBool bFalse = false;
-            host->setValue(NPPVpluginWindowBool, (void *)bFalse);
+            host->setValue(NPPVpluginWindowBool, (void *)false);
+            host->setValue(NPPVpluginTransparentBool, (void *)true);
 
             return NPERR_NO_ERROR; 
         }
@@ -48,11 +48,14 @@ namespace NPObjFramework {
         NPScriptObj(NPP npp, NPClass *aClass) : host(asNPHostObj(npp)) {
             _class = aClass; referenceCount = 1;
         }
-        virtual ~NPScriptObj() {};
+        virtual ~NPScriptObj() {
+            _class = NULL; referenceCount = 0; 
+        };
         virtual const char* className() { return "NPScriptObj"; }
+        bool isNPObjectValid() { return _class && referenceCount>0; }
         virtual bool isValid() { return true; }
 
-        virtual void deallocate() {}
+        virtual void deallocate() { }
         virtual void invalidate() {}
 
         virtual bool hasMethod(NPIdentifier name) { return false; }
@@ -117,7 +120,7 @@ namespace NPObjFramework {
 
     inline NPScriptObj* asNPScriptObj(NPObject* npobj) {
         NPScriptObj* obj = static_cast<NPScriptObj*>(npobj);
-        return obj && obj->isValid() ? obj : NULL;
+        return obj && obj->isNPObjectValid() && obj->isValid() ? obj : NULL;
     }
 
     /*~ NPClass providers for NPScriptObj objects ~~~~~~~*/
@@ -142,10 +145,7 @@ namespace NPObjFramework {
 
         NPObject* createObject(NPP npp) { 
             return asNPHostObj(npp)->createObject((NPClass*)this); }
-        T* create(NPP npp) {
-            //return (T*) createObject(npp); 
-            return (T*) createInstance(npp, this); 
-        }
+        T* create(NPP npp) { return createInstance(npp, this); }
         static const char* className() { return T::s_className(); }
 
     protected:
@@ -169,7 +169,7 @@ namespace NPObjFramework {
         static void _deallocate(NPObject *npobj) {
             NPScriptObj* obj = asNPScriptObj(npobj);
             log(className(), "deallocate");
-            if (obj) obj->deallocate(); }
+            if (obj) { obj->deallocate(); delete obj; } }
         static void _invalidate(NPObject *npobj) {
             NPScriptObj* obj = asNPScriptObj(npobj);
             log(className(), "invalidate");
@@ -242,6 +242,8 @@ namespace NPObjFramework {
         virtual bool hasMethod(NPIdentifier name) {
             return methods.count(name) > 0;
         }
+        virtual bool invokeDefault(const NPVariant *args, uint32_t argCount, NPVariant *result) {
+            return invoke(ident("__call__"), args, argCount, result); }
         virtual bool invoke(NPIdentifier name, const NPVariant *args, uint32_t argCount, NPVariant *result) {
             if (methods.count(name)) {
                 ScriptMethod fn = methods[name];
@@ -318,8 +320,9 @@ namespace NPObjFramework {
             return setPropertyRef(ident(name)); }
         virtual bool setProperty(NPIdentifier name, const NPVariant *value) {
             if (propertyMethods.count(name)>0) {
+                NPVariant res = {NPVariantType_Void, NULL};
                 ScriptMethod fn = propertyMethods[name];
-                return fn ? (self()->*fn)(name, value, 1, NULL) : false;
+                return fn ? (self()->*fn)(name, value, 1, &res) : false;
             } else if (properties.count(name))
                 host->releaseVariantValue(&properties[name]);
             properties[name] = *value; 
