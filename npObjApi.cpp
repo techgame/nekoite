@@ -12,13 +12,13 @@ static NPNetscapeFuncs* g_hostApi;
 
 #if !defined(XP_UNIX) || defined(XP_MACOSX) || defined(XP_WIN)
 NPError OSCALL NP_Initialize(NPNetscapeFuncs* hostApi) {
-    npObjFramework_log("NP_Initialize");
+    npObjFramework_log("NP_Initialize\n");
     g_hostApi = hostApi;
     return NPERR_NO_ERROR;
 }
 #else
 NPError OSCALL NP_Initialize(NPNetscapeFuncs* hostApi, NPPluginFuncs* pluginApi) {
-    npObjFramework_log("NP_Initialize (unix)");
+    npObjFramework_log("NP_Initialize (unix)\n");
     NP_GetEntryPoints(pluginApi);
     g_hostApi = hostApi;
     return NPERR_NO_ERROR;
@@ -26,7 +26,7 @@ NPError OSCALL NP_Initialize(NPNetscapeFuncs* hostApi, NPPluginFuncs* pluginApi)
 #endif
 
 NPError OSCALL NP_GetEntryPoints(NPPluginFuncs* pluginApi) {
-    npObjFramework_log("NP_GetEntryPoints");
+    npObjFramework_log("NP_GetEntryPoints\n");
     uint16_t lastEntry = pluginApi->size - sizeof(void*);
     if (lastEntry < offsetof(NPPluginFuncs, setvalue))
         return NPERR_INVALID_FUNCTABLE_ERROR;
@@ -56,7 +56,7 @@ NPError OSCALL NP_GetEntryPoints(NPPluginFuncs* pluginApi) {
 }
 
 NPError OSCALL NP_Shutdown(void) {
-    npObjFramework_log("NP_Shutdown");
+    npObjFramework_log("NP_Shutdown\n");
     return NPERR_NO_ERROR;
 }
 
@@ -64,7 +64,7 @@ NPError OSCALL NP_Shutdown(void) {
 NPError NPP_New(NPMIMEType pluginType, NPP instance, uint16_t mode, 
         int16_t argc, char* argn[], char* argv[], NPSavedData* saved)
 {
-    npObjFramework_log("NPP_New");
+    npObjFramework_log("NPP_New\n");
     try {
         NPPluginObj* obj = createNPPluginObj(instance, g_hostApi);
         if (!obj) return NPERR_GENERIC_ERROR;
@@ -74,7 +74,7 @@ NPError NPP_New(NPMIMEType pluginType, NPP instance, uint16_t mode,
 }
 
 NPError NPP_Destroy(NPP instance, NPSavedData** save) {
-    npObjFramework_log("NPP_Destroy");
+    npObjFramework_log("NPP_Destroy\n");
     NPPluginObj* obj = asNPPluginObj(instance);
     instance->pdata = NULL;
     if (obj) {
@@ -88,7 +88,7 @@ NPError NPP_Destroy(NPP instance, NPSavedData** save) {
     return NPERR_NO_ERROR;
 }
 NPError NPP_GetValue(NPP instance, NPPVariable variable, void *value) {
-    npObjFramework_log("NPP_GetValue");
+    npObjFramework_log("NPP_GetValue\n");
     try {
         NPPluginObj* obj = asNPPluginObj(instance);
         return !obj ? NPERR_INVALID_INSTANCE_ERROR
@@ -96,7 +96,7 @@ NPError NPP_GetValue(NPP instance, NPPVariable variable, void *value) {
     } catch (NPException exc) { return exc.err; }
 }
 NPError NPP_SetValue(NPP instance, NPNVariable variable, void *value) {
-    npObjFramework_log("NPP_SetValue");
+    npObjFramework_log("NPP_SetValue\n");
     try {
         NPPluginObj* obj = asNPPluginObj(instance);
         return !obj ? NPERR_INVALID_INSTANCE_ERROR
@@ -106,7 +106,7 @@ NPError NPP_SetValue(NPP instance, NPNVariable variable, void *value) {
 
 
 NPError NPP_NewStream(NPP instance, NPMIMEType type, NPStream* stream, NPBool seekable, uint16_t* stype) {
-    npObjFramework_log("NPP_NewStream");
+    npObjFramework_log("NPP_NewStream\n");
     try {
         NPPluginObj* obj = asNPPluginObj(instance);
         return !obj ? NPERR_INVALID_INSTANCE_ERROR
@@ -122,7 +122,7 @@ NPError NPP_DestroyStream(NPP instance, NPStream* stream, NPReason reason) {
     } catch (NPException exc) { return exc.err; }
 }
 int32_t NPP_WriteReady(NPP instance, NPStream* stream) {
-    npObjFramework_log("NPP_WriteReady");
+    npObjFramework_log("NPP_WriteReady\n");
     try {
         NPPluginObj* obj = asNPPluginObj(instance);
         return !obj ? NPERR_INVALID_INSTANCE_ERROR
@@ -130,7 +130,7 @@ int32_t NPP_WriteReady(NPP instance, NPStream* stream) {
     } catch (NPException exc) { return exc.err; }
 }
 int32_t NPP_Write(NPP instance, NPStream* stream, int32_t offset, int32_t len, void* buffer) {
-    npObjFramework_log("NPP_Write");
+    npObjFramework_log("NPP_Write\n");
     try {
         NPPluginObj* obj = asNPPluginObj(instance);
         return !obj ? NPERR_INVALID_INSTANCE_ERROR
@@ -138,21 +138,21 @@ int32_t NPP_Write(NPP instance, NPStream* stream, int32_t offset, int32_t len, v
     } catch (NPException exc) { return exc.err; }
 }
 void NPP_StreamAsFile(NPP instance, NPStream* stream, const char* fname) {
-    npObjFramework_log("NPP_StreamAsFile");
+    npObjFramework_log("NPP_StreamAsFile\n");
     try {
         NPPluginObj* obj = asNPPluginObj(instance);
         if (obj) obj->streamAsFile(stream, fname);
     } catch (NPException) { return; }
 }
 void NPP_URLNotify(NPP instance, const char* url, NPReason reason, void* notifyData) {
-    npObjFramework_log("NPP_URLNotify");
+    npObjFramework_log("NPP_URLNotify\n");
     try {
         NPPluginObj* obj = asNPPluginObj(instance);
         if (obj) obj->urlNotify(url, reason, notifyData);
     } catch (NPException) { return; }
 }
 void NPP_URLRedirectNotify(NPP instance, const char* url, int32_t status, void* notifyData) {
-    npObjFramework_log("NPP_URLRedirectNotify");
+    npObjFramework_log("NPP_URLRedirectNotify\n");
     try {
         NPPluginObj* obj = asNPPluginObj(instance);
         if (obj) obj->urlRedirectNotify(url, status, notifyData);
@@ -161,7 +161,7 @@ void NPP_URLRedirectNotify(NPP instance, const char* url, int32_t status, void* 
 
 
 NPError NPP_SetWindow(NPP instance, NPWindow* window) {
-    npObjFramework_log("NPP_SetWindow");
+    npObjFramework_log("NPP_SetWindow\n");
     try {
         NPPluginObj* obj = asNPPluginObj(instance);
         return !obj ? NPERR_INVALID_INSTANCE_ERROR
@@ -169,14 +169,14 @@ NPError NPP_SetWindow(NPP instance, NPWindow* window) {
     } catch (NPException exc) { return exc.err; }
 }
 void NPP_Print(NPP instance, NPPrint* platformPrint) {
-    npObjFramework_log("NPP_Print");
+    npObjFramework_log("NPP_Print\n");
     try {
         NPPluginObj* obj = asNPPluginObj(instance);
         if (obj) obj->print(platformPrint);
     } catch (NPException) { return; }
 }
 int16_t NPP_HandleEvent(NPP instance, void* event) {
-    //npObjFramework_log("NPP_HandleEvent");
+    //npObjFramework_log("NPP_HandleEvent\n");
     try {
         NPPluginObj* obj = asNPPluginObj(instance);
         return !obj ? NPERR_INVALID_INSTANCE_ERROR
@@ -184,14 +184,14 @@ int16_t NPP_HandleEvent(NPP instance, void* event) {
     } catch (NPException exc) { return exc.err; }
 }
 NPBool NPP_GotFocus(NPP instance, NPFocusDirection direction) {
-    npObjFramework_log("NPP_GotFocus");
+    npObjFramework_log("NPP_GotFocus\n");
     try {
         NPPluginObj* obj = asNPPluginObj(instance);
         return !obj ? false : obj->gotFocus(direction);
     } catch (NPException) { return false; }
 }
 void NPP_LostFocus(NPP instance) {
-    npObjFramework_log("NPP_LostFocus");
+    npObjFramework_log("NPP_LostFocus\n");
     try {
         NPPluginObj* obj = asNPPluginObj(instance);
         if (obj) obj->lostFocus();
@@ -200,7 +200,7 @@ void NPP_LostFocus(NPP instance) {
 
 #if !defined(__APPLE__)
 void npObjFramework_log_v(const char* fmt, va_list args) {
-    char szBuf[16384];
+    char szBuf[4096];
     vsprintf(szBuf, fmt, args);
 #if defined(_WIN32)
     ::OutputDebugStringA(szBuf);

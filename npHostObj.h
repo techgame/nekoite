@@ -152,5 +152,48 @@ namespace NPObjFramework {
             return apiFn(api->handleevent)(instance, event, handled); }
         NPBool unfocusInstance(NPFocusDirection direction) {
             return apiFn(api->unfocusinstance)(instance, direction); }
+            
+        /* Utilities and access methods */
+        NPObject* domWindow(NPObject* res=NULL) {
+            return getValue(NPNVWindowNPObject, &res)!=0 ? res : NULL; }
+        NPObject* domElement(NPObject* res=NULL) {
+            return getValue(NPNVPluginElementNPObject, &res)!=0 ? res : NULL; }
+            
+        inline NPIdentifier ident(NPIdentifier name) { return name; }
+        inline NPIdentifier ident(const char* utf8Name) { return getStringIdentifier(utf8Name); }
+        inline NPIdentifier ident(uint32_t idxName) { return getIntIdentifier(idxName); }
+        std::string identStr(NPIdentifier name, const char* absent="[null]") {
+            NPUTF8* szName = utf8FromIdentifier(name);
+            if (!szName) return absent;
+            std::string res(szName);
+            memFree(szName);
+            return res; }
+        
+        inline NPVariant* setVariantVoid(NPVariant* r) {
+            r->type = NPVariantType_Void; r->value.objectValue = NULL; return r; }
+        inline NPVariant* setVariantNull(NPVariant* r) {
+            r->type = NPVariantType_Null; r->value.objectValue = NULL; return r; }
+        
+        inline NPVariant* setVariant(NPVariant* r, bool v) {
+            r->type = NPVariantType_Bool; r->value.boolValue = v; return r; }
+        inline NPVariant* setVariant(NPVariant* r, int32_t v) {
+            r->type = NPVariantType_Int32; r->value.intValue = v; return r; }
+        inline NPVariant* setVariant(NPVariant* r, double v) {
+            r->type = NPVariantType_Double; r->value.doubleValue = v; return r; }
+        inline NPVariant* setVariant(NPVariant* r, NPObject* v) {
+            r->type = NPVariantType_Object; r->value.objectValue = v; return r; }
+        inline NPVariant* setVariant(NPVariant* r, NPString v) {
+            r->type = NPVariantType_String; r->value.stringValue = v; return r; }
+        inline NPVariant* setVariant(NPVariant* r, const NPUTF8* str, size_t len=0, size_t maxlen=1024) {
+            r->type = NPVariantType_String;
+            NPString& sz = r->value.stringValue;
+
+            if (len == 0) len = ::strnlen(str, maxlen);
+            char* buf = (char*) memAlloc(len);
+            ::strncpy(buf, str, len);
+            sz.UTF8Characters = buf;
+            sz.UTF8Length = len;
+            return r;
+        }            
     };
 }
