@@ -116,6 +116,166 @@ namespace NPObjFramework {
         return obj && obj->isNPObjectValid() && obj->isValid() ? obj : NULL;
     }
 
+
+    /*~ Composed ScriptObj derivatives ~~~~~~~~~~~~~~~~~~~*/
+
+    template <typename T>
+    struct NPScriptObjStd : NPScriptObj {
+        typedef bool (T::*ScriptMethod)(NPIdentifier name, const NPVariant *args, uint32_t argCount, NPVariant *result);
+        typedef struct {bool isProperty; const char* utf8Name; ScriptMethod fnMethod; } MethodTableEntry;
+        typedef std::map<NPIdentifier, ScriptMethod> MethodMap;
+        typedef typename MethodMap::iterator MethodMapIter;
+        typedef std::map<NPIdentifier, NPVariant> PropertyMap;
+        typedef typename PropertyMap::iterator PropertyMapIter;
+
+        MethodMap methods;
+        PropertyMap properties;
+        MethodMap propertyMethods;
+
+        NPScriptObjStd(NPP npp, NPClass *aClass) : NPScriptObj(npp, aClass) {}
+        virtual ~NPScriptObjStd() {}
+
+        virtual T* self() = 0;
+        virtual const char* className() { return T::s_className(); }
+
+
+        /*~ Method Registration ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+        virtual bool registerMethod(NPIdentifier name, ScriptMethod fnMethod, bool isProperty=false) {
+            if (isProperty)
+                propertyMethods[name] = fnMethod;
+            else methods[name] = fnMethod;
+            return !!fnMethod; }
+        template <typename N>
+        inline bool registerMethod(N name, ScriptMethod fnMethod, bool isProperty=false) {
+            return registerMethod(ident(name), fnMethod, isProperty); }
+
+        bool registerMethodTable(MethodTableEntry* methodTable) {
+            if (!methodTable) return false;
+            for(; !!methodTable->utf8Name; methodTable++)
+                registerMethod(methodTable->utf8Name, methodTable->fnMethod, methodTable->isProperty);
+            return true; }
+
+
+        /*~ Methods ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+        virtual bool hasMethod(NPIdentifier name) {
+            return methods.count(name) > 0; }
+        virtual bool invokeDefault(const NPVariant *args, uint32_t argCount, NPVariant *result) {
+            return invoke(ident("__call__"), args, argCount, result); }
+        virtual bool invoke(NPIdentifier name, const NPVariant *args, uint32_t argCount, NPVariant *result) {
+            if (methods.count(name)) {
+                ScriptMethod fn = methods[name];
+                if (fn) return (self()->*fn)(name, args, argCount, result);
+            }
+            return invokeDNU(name, args, argCount, result); }
+        virtual bool invokeDNU(NPIdentifier name, const NPVariant *args, uint32_t argCount, NPVariant *result) {
+            return false; }
+
+
+        /*~ hasProperty ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+        virtual bool hasProperty(NPIdentifier name) {
+            if (properties.count(name) > 0) return true;
+            if (propertyMethods.count(name) > 0) return true;
+            //if (methods.count(name) > 0) return false;
+            return false; }
+
+
+        /*~ getProperty ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+        virtual NPVariant* getPropertyRef(NPIdentifier name) {
+            return properties.count(name) ? &properties[name] : NULL;
+        }
+        virtual bool getProperty(NPIdentifier name, NPVariant *result) {
+            if (properties.count(name)>0) {
+                *result = properties[name];
+                return true;
+            } else if (propertyMethods.count(name)>0) {
+                ScriptMethod fn = propertyMethods[name];
+                return fn ? (self()->*fn)(name, NULL, 0, result) : false;
+            } else return false;
+        }
+
+
+        /*~ setProperty ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+        virtual NPVariant* setPropertyRef(NPIdentifier name) {
+            if (properties.count(name))
+                host->releaseVariantValue(&properties[name]);
+            return &properties[name];
+        }
+        virtual bool setProperty(NPIdentifier name, const NPVariant *value) {
+            if (propertyMethods.count(name)>0) {
+                NPVariant res = {NPVariantType_Void, NULL};
+                ScriptMethod fn = propertyMethods[name];
+                return fn ? (self()->*fn)(name, value, 1, &res) : false;
+            } else if (properties.count(name))
+                host->releaseVariantValue(&properties[name]);
+            properties[name] = *value; 
+            return true;
+        }
+
+
+        /*~ removeProperty ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+        virtual bool removeProperty(NPIdentifier name) {
+            if (!properties.count(name)) return false;
+            host->releaseVariantValue(&properties[name]);
+            properties.erase(name);
+            return true;
+        }
+
+
+        /*~ Methods and Properties Enumeration ~~~~~~~~~~~~~~~*/
+        virtual bool enumerate(NPIdentifier **value, uint32_t *count) {
+            NPIdentifier *tip, *buf;
+            uint32_t nElems = 2 + properties.size()
+                + propertyMethods.size() + methods.size();
+            tip = buf = (NPIdentifier*) host->memAlloc(nElems*sizeof(NPIdentifier));
+
+            *tip = ident("STUPID_DARN");
+            PropertyMapIter itProp=properties.begin(); 
+            for (; itProp!=properties.end(); ++itProp) {
+                *(tip++) = itProp->first; }
+
+            MethodMapIter
+                itMeth=propertyMethods.begin(),
+                itMethEnd=propertyMethods.end();
+            for (; itMeth!=itMethEnd; ++itMeth) {
+                *(tip++) = itMeth->first; }
+
+            itMeth=methods.begin();
+            itMethEnd=methods.end();
+            for (; itMeth!=itMethEnd; ++itMeth) {
+                *(tip++) = itMeth->first; }
+
+            *(tip++) = NULL;
+            *value = buf; *count = nElems;
+            return true;
+        }
+        
+
+        /*~ Adaptors for NPIdentifier and NPVariants ~~~~~~~~~*/
+        template <typename N>
+        inline bool hasProperty(N name) {
+            return hasProperty(ident(name)); }
+        template <typename N>
+        inline NPVariant* getPropertyRef(N name) {
+            return getPropertyRef(ident(name)); }
+
+        template <typename N>
+        inline bool setProperty(N name, const NPVariant *value) {
+            return setProperty(ident(name), value); }
+        template <typename N>
+        inline NPVariant* setPropertyRef(N name) {
+            return setPropertyRef(ident(name)); }
+        template <typename V, typename N>
+        inline void setProperty(N name, V value) {
+            setVariant(setPropertyRef(ident(name)), value); }
+
+        template <typename N>
+        inline bool removeProperty(N name) {
+            return removeProperty(ident(name)); }
+    };
+
+
     /*~ NPClass providers for NPScriptObj objects ~~~~~~~*/
 
     template <typename T>
@@ -207,192 +367,4 @@ namespace NPObjFramework {
             log(obj, "enumerate");
             return !obj ? false : obj->enumerate(value, count); }
     };
-
-
-    /*~ Composed ScriptObj derivatives ~~~~~~~~~~~~~~~~~~~*/
-
-    template <typename T>
-    struct NPScriptObjStd : NPScriptObj {
-        typedef bool (T::*ScriptMethod)(NPIdentifier name, const NPVariant *args, uint32_t argCount, NPVariant *result);
-        typedef struct {bool isProperty; const char* utf8Name; ScriptMethod fnMethod; } MethodTableEntry;
-        typedef std::map<NPIdentifier, ScriptMethod> MethodMap;
-        typedef typename MethodMap::iterator MethodMapIter;
-        typedef std::map<NPIdentifier, NPVariant> PropertyMap;
-        typedef typename PropertyMap::iterator PropertyMapIter;
-
-        MethodMap methods;
-        PropertyMap properties;
-        MethodMap propertyMethods;
-
-        NPScriptObjStd(NPP npp, NPClass *aClass) : NPScriptObj(npp, aClass) {}
-        virtual ~NPScriptObjStd() {}
-
-        virtual T* self() = 0;
-        virtual const char* className() { return T::s_className(); }
-
-        /*~ Methods ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-
-        virtual bool hasMethod(NPIdentifier name) {
-            return methods.count(name) > 0;
-        }
-        virtual bool invokeDefault(const NPVariant *args, uint32_t argCount, NPVariant *result) {
-            return invoke(ident("__call__"), args, argCount, result); }
-        virtual bool invoke(NPIdentifier name, const NPVariant *args, uint32_t argCount, NPVariant *result) {
-            if (methods.count(name)) {
-                ScriptMethod fn = methods[name];
-                if (fn) return (self()->*fn)(name, args, argCount, result);
-            }
-            return invokeDNU(name, args, argCount, result);
-        }
-        virtual bool invokeDNU(NPIdentifier name, const NPVariant *args, uint32_t argCount, NPVariant *result) {
-            return false;
-        }
-
-        bool registerMethodTable(MethodTableEntry* methodTable) {
-            if (!methodTable) return false;
-            for(; !!methodTable->utf8Name; methodTable++)
-                registerMethod(methodTable->utf8Name, methodTable->fnMethod, methodTable->isProperty);
-            return true;
-        }
-        template <typename N>
-        inline bool registerMethod(N name, ScriptMethod fnMethod, bool isProperty=false) {
-            return registerMethod(ident(name), fnMethod, isProperty); }
-        virtual bool registerMethod(NPIdentifier name, ScriptMethod fnMethod, bool isProperty=false) {
-            if (isProperty)
-                propertyMethods[name] = fnMethod;
-            else methods[name] = fnMethod;
-            return !!fnMethod;
-        }
-
-
-        /*~ hasProperty ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-        virtual bool hasProperty(NPIdentifier name) {
-            if (properties.count(name) > 0) return true;
-            if (propertyMethods.count(name) > 0) return true;
-            if (methods.count(name) > 0) return false;
-            return false;
-        }
-        template <typename N>
-        inline bool hasProperty(N name) {
-            return hasProperty(ident(name)); }
-
-
-        /*~ getProperty ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-        virtual NPVariant* getPropertyRef(NPIdentifier name) {
-            return properties.count(name) ? &properties[name] : NULL;
-        }
-        template <typename N>
-        inline NPVariant* getPropertyRef(N name) {
-            return getPropertyRef(ident(name)); }
-        virtual bool getProperty(NPIdentifier name, NPVariant *result) {
-            if (properties.count(name)>0) {
-                *result = properties[name];
-                return true;
-            } else if (propertyMethods.count(name)>0) {
-                ScriptMethod fn = propertyMethods[name];
-                return fn ? (self()->*fn)(name, NULL, 0, result) : false;
-            } else return false;
-        }
-        template <typename N>
-        inline bool getProperty(N name, NPVariant *result) {
-            return getProperty(ident(name), result); }
-
-        template <typename V, typename N>
-        inline V* getProperty(N name, V** out) {
-            return getVariant(getPropertyRef(ident(name)), out); }
-
-
-        /*~ setProperty ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-        virtual NPVariant* setPropertyRef(NPIdentifier name) {
-            if (properties.count(name))
-                host->releaseVariantValue(&properties[name]);
-            return &properties[name];
-        }
-        template <typename N>
-        inline NPVariant* setPropertyRef(N name) {
-            return setPropertyRef(ident(name)); }
-        virtual bool setProperty(NPIdentifier name, const NPVariant *value) {
-            if (propertyMethods.count(name)>0) {
-                NPVariant res = {NPVariantType_Void, NULL};
-                ScriptMethod fn = propertyMethods[name];
-                return fn ? (self()->*fn)(name, value, 1, &res) : false;
-            } else if (properties.count(name))
-                host->releaseVariantValue(&properties[name]);
-            properties[name] = *value; 
-            return true;
-        }
-        template <typename N>
-        inline bool setProperty(N name, const NPVariant *value) {
-            return setProperty(ident(name), value); }
-
-        template <typename V, typename N>
-        inline bool setProperty(N name, V value) {
-            return setVariant(setPropertyRef(ident(name)), value); }
-
-
-        /*~ removeProperty ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-        virtual bool removeProperty(NPIdentifier name) {
-            if (!properties.count(name)) return false;
-            host->releaseVariantValue(&properties[name]);
-            properties.erase(name);
-            return true;
-        }
-        template <typename N>
-        inline bool removeProperty(N name) {
-            return removeProperty(ident(name)); }
-
-
-        /*~ Methods and Properties Enumeration ~~~~~~~~~~~~~~~*/
-        virtual bool enumerate(NPIdentifier **value, uint32_t *count) {
-            NPIdentifier *tip, *buf;
-            uint32_t nElems = properties.size()
-                + propertyMethods.size() + methods.size();
-            tip = buf = (NPIdentifier*) host->memAlloc(nElems*sizeof(NPIdentifier));
-
-            PropertyMapIter itProp=properties.begin(); 
-            for (; itProp!=properties.end(); ++itProp) {
-                *(tip++) = itProp->first; }
-
-            MethodMapIter
-                itMeth=propertyMethods.begin(),
-                itMethEnd=propertyMethods.end();
-            for (; itMeth!=itMethEnd; ++itMeth) {
-                *(tip++) = itMeth->first; }
-
-            itMeth=methods.begin();
-            itMethEnd=methods.end();
-            for (; itMeth!=itMethEnd; ++itMeth) {
-                *(tip++) = itMeth->first; }
-
-            *value = buf; *count = nElems;
-            return true;
-        }
-        
-        virtual bool prop_className(NPIdentifier, const NPVariant *args, uint32_t argCount, NPVariant *result) {
-            if (argCount == 0) {
-                if (result) setVariant(result, className());
-                return true;
-            } else {
-                if (result) setVariantVoid(result);
-                return false;
-            }
-        }
-    };
-
-    /* 
-    struct ExampleObj : NPScriptObjStd<ExampleObj> {
-        ExampleObj(NPP npp, NPClass *aClass)
-            : NPScriptObjStd(npp, aClass)
-        {
-            registerMethod("example", &ExampleObj::example);
-        }
-        virtual ExampleObj* self() { return this; }
-        static const char* s_className() { return "ExampleObj"; }
-
-        virtual bool example(NPIdentifier, const NPVariant *args, uint32_t argCount, NPVariant *result) {
-            return true;
-        }
-    };
-    NPScriptClass<ExampleObj> exampleClass;
-    */
 }

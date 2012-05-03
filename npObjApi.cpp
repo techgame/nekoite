@@ -1,5 +1,10 @@
 /* -*- coding: utf-8 -*- vim: set ts=4 sw=4 expandtab */
 #include "npObjFramework.h"
+extern "C" {
+    NPError OSCALL NP_Initialize(NPNetscapeFuncs *browserApi);
+    NPError OSCALL NP_GetEntryPoints(NPPluginFuncs *pluginApi);
+    NPError OSCALL NP_Shutdown(void);
+}
 
 using namespace NPObjFramework;
 

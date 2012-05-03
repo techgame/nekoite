@@ -19,8 +19,6 @@
 
     #include <windows.h>
 
-#elif defined(__APPLE__)
-    
 #endif
 
 #include "npapi/npapi.h"
@@ -30,7 +28,6 @@
 void npObjFramework_log(const char* fmt, ...);
 void npObjFramework_log_v(const char* fmt, va_list args);
 
-#include "npObjApi.h"
 #include "npHostObj.h"
 #include "npPluginObj.h"
 #include "npScriptObj.h"
