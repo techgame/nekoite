@@ -71,6 +71,13 @@ namespace NPObjFramework {
         inline NPVariant* setVariantNull(NPVariant* r) { return host->setVariantNull(r); }
         template <typename T>
         inline NPVariant* setVariant(NPVariant* r, T v) { return host->setVariant(r, v); }
+
+        uint32_t scheduleTimer(NPTimerTarget* tgt, uint32_t interval, bool repeat=true) {
+            return NPTimerMgr::scheduleTimer(host, tgt, interval, repeat); }
+        bool unscheduleTimer(uint32_t timerID) {
+            return NPTimerMgr::unscheduleTimer(host, timerID); }
+        bool unscheduleTimer(NPTimerCtx* ctx) {
+            return NPTimerMgr::unscheduleTimer(host, ctx); }
     };
 
     inline NPScriptObj* asNPScriptObj(NPObject* npobj) {

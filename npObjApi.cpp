@@ -178,6 +178,12 @@ void NPP_LostFocus(NPP instance) {
     } catch (NPException) { return; }
 }
 
+/*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ *~ Utilitiy Implementations and Statics
+ *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+
+NPTimerCtx::map NPTimerMgr::ctxmap;
+
 #if !defined(__APPLE__)
 void npObjFramework_log_v(const char* fmt, va_list args) {
     char szBuf[4096];

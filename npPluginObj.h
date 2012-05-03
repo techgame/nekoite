@@ -71,6 +71,13 @@ namespace NPObjFramework {
         virtual NPError initFinish(NPMIMEType pluginType, uint16_t mode) { return NPERR_NO_ERROR; }
 
         virtual NPError destroy(NPSavedData** save) { return NPERR_NO_ERROR; }
+
+        uint32_t scheduleTimer(NPTimerTarget* tgt, uint32_t interval, bool repeat=true) {
+            return NPTimerMgr::scheduleTimer(host, tgt, interval, repeat); }
+        bool unscheduleTimer(uint32_t timerID) {
+            return NPTimerMgr::unscheduleTimer(host, timerID); }
+        bool unscheduleTimer(NPTimerCtx* ctx) {
+            return NPTimerMgr::unscheduleTimer(host, ctx); }
     };
 }
 

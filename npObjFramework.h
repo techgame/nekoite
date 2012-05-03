@@ -29,6 +29,7 @@ void npObjFramework_log(const char* fmt, ...);
 void npObjFramework_log_v(const char* fmt, va_list args);
 
 #include "npHostObj.h"
+#include "npTimers.h"
 #include "npPluginObj.h"
 #include "npScriptObj.h"
 
