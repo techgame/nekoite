@@ -64,13 +64,12 @@ namespace NPObjFramework {
         virtual bool enumerate(NPIdentifier **value, uint32_t *count) { return false; }
 
         /* NPHost interface utilities */
-        template <typename T>
-        inline NPIdentifier ident(T name) { return host->ident(name); }
+        template <typename T> inline T release(T v) { return host->release(v); }
+        template <typename T> inline NPIdentifier ident(T name) { return host->ident(name); }
         inline std::string identStr(NPIdentifier name) { return host->identStr(name); }
         inline NPVariant* setVariantVoid(NPVariant* r) { return host->setVariantVoid(r); }
         inline NPVariant* setVariantNull(NPVariant* r) { return host->setVariantNull(r); }
-        template <typename T>
-        inline NPVariant* setVariant(NPVariant* r, T v) { return host->setVariant(r, v); }
+        template <typename T> inline NPVariant* setVariant(NPVariant* r, T v) { return host->setVariant(r, v); }
 
         uint32_t scheduleTimer(NPTimerTarget* tgt, uint32_t interval, bool repeat=true) {
             return NPTimerMgr::scheduleTimer(host, tgt, interval, repeat); }

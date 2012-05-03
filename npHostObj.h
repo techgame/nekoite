@@ -21,6 +21,11 @@ namespace NPObjFramework {
         NPHostObj(NPP instance_p, NPNetscapeFuncs* api_p) 
             : instance(instance_p), api(api_p) {}
 
+        template <typename T, typename R>
+        inline R releaseWithResult(T obj, R res) { release(obj); return res; }
+        template <typename T>
+        inline T* memFreeEx(T* ptr) { memFree((void*)ptr); return NULL; }
+
         /* General API */
         void status(const char* message) { return apiFn(api->status)(instance, message); }
         const char* userAgent() { return apiFn(api->uagent)(instance); }
@@ -30,34 +35,42 @@ namespace NPObjFramework {
         uint32_t memFlush(uint32_t size) { return apiFn(api->memflush)(size); }
 
         void reloadPlugins(NPBool reloadPages) { return apiFn(api->reloadplugins)(reloadPages); }
-
         NPError getValue(NPNVariable variable, void *value) {
             return apiFn(api->getvalue)(instance, variable, value); }
         NPError setValue(NPPVariable variable, void *value) {
             return apiFn(api->setvalue)(instance, variable, value); }
-
         uint32_t scheduleTimer(uint32_t interval, NPBool repeat, void (*timerFunc)(NPP npp, uint32_t timerID)) {
             return apiFn(api->scheduletimer)(instance, interval, repeat, timerFunc); }
         void unscheduleTimer(uint32_t timerID) {
             return apiFn(api->unscheduletimer)(instance, timerID); }
-
         void pluginThreadAsyncCall(void (*func) (void *), void *userData) {
             return apiFn(api->pluginthreadasynccall)(instance, func, userData); }
 
+        NPObject* domWindow(NPObject* res=NULL) {
+            return (NPERR_NO_ERROR == getValue(NPNVWindowNPObject, &res)) ? res : NULL; }
+        NPObject* domElement(NPObject* res=NULL) {
+            return (NPERR_NO_ERROR == getValue(NPNVPluginElementNPObject, &res)) ? res : NULL; }
 
         /* Scripting Support */
         NPObject* createObject(NPClass *aClass) {
             return apiFn(api->createobject)(instance, aClass); }
         NPObject* retainObject(NPObject *npobj) {
             return apiFn(api->retainobject)(npobj); }
-        void releaseObject(NPObject *npobj) {
-            apiFn(api->releaseobject)(npobj); }
+        NPObject* releaseObject(NPObject *npobj) {
+            apiFn(api->releaseobject)(npobj); return NULL; }
+        inline NPObject* release(NPObject *npobj) { return releaseObject(npobj); }
         bool invoke(NPObject *npobj, NPIdentifier methodName, const NPVariant *args, uint32_t argCount, NPVariant *result) {
             return apiFn(api->invoke)(instance, npobj, methodName, args, argCount, result); }
         bool invokeDefault(NPObject *npobj, const NPVariant *args, uint32_t argCount, NPVariant *result) {
             return apiFn(api->invokeDefault)(instance, npobj, args, argCount, result); }
-        bool evaluate(NPObject *npobj, NPString *script, NPVariant *result) {
-            return apiFn(api->evaluate)(instance, npobj, script, result); }
+        bool evalElement(const NPString *script, NPVariant *result) { NPObject* domElem = domElement();
+            return releaseWithResult(domElem, apiFn(api->evaluate)(instance, domElem, (NPString*)script, result)); }
+        bool evalWindow(const NPString *script, NPVariant *result) { NPObject* domWin = domWindow();
+            return releaseWithResult(domWin, apiFn(api->evaluate)(instance, domWin, (NPString*)script, result)); }
+        bool evaluate(NPObject *npobj, const NPString *script, NPVariant *result) {
+            if (npobj) return apiFn(api->evaluate)(instance, npobj, (NPString*)script, result);
+            else if ((intptr_t)npobj == 1) return evalElement(script, result);
+            else return evalWindow(script, result); }
         bool getProperty(NPObject *npobj, NPIdentifier propertyName, NPVariant *result) {
             return apiFn(api->getproperty)(instance, npobj, propertyName, result); }
         bool setProperty(NPObject *npobj, NPIdentifier propertyName, const NPVariant *value) {
@@ -75,8 +88,9 @@ namespace NPObjFramework {
         void setException(NPObject *npobj, const NPUTF8 *message) {
             return apiFn(api->setexception)(npobj, message); }
 
-        void releaseVariantValue(NPVariant *variant) {
-            return apiFn(api->releasevariantvalue)(variant); }
+        NPVariant* releaseVariantValue(NPVariant *variant) {
+            apiFn(api->releasevariantvalue)(variant); return NULL; }
+        inline NPVariant* release(NPVariant *variant) { return releaseVariantValue(variant); }
         NPIdentifier getStringIdentifier(const NPUTF8 *name) {
             return apiFn(api->getstringidentifier)(name); }
         void getStringIdentifiers(const NPUTF8 **names, int32_t nameCount, NPIdentifier *identifiers) {
@@ -154,48 +168,66 @@ namespace NPObjFramework {
             return apiFn(api->unfocusinstance)(instance, direction); }
             
         /* Utilities and access methods */
-        NPObject* domWindow(NPObject* res=NULL) {
-            return getValue(NPNVWindowNPObject, &res)!=0 ? res : NULL; }
-        NPObject* domElement(NPObject* res=NULL) {
-            return getValue(NPNVPluginElementNPObject, &res)!=0 ? res : NULL; }
-            
         inline NPIdentifier ident(NPIdentifier name) { return name; }
         inline NPIdentifier ident(const char* utf8Name) { return getStringIdentifier(utf8Name); }
         inline NPIdentifier ident(uint32_t idxName) { return getIntIdentifier(idxName); }
         std::string identStr(NPIdentifier name, const char* absent="[null]") {
             NPUTF8* szName = utf8FromIdentifier(name);
-            if (!szName) return absent;
+            if (szName) return absent;
             std::string res(szName);
-            memFree(szName);
+            szName = memFreeEx(szName);
             return res; }
         
-        inline NPVariant* setVariantVoid(NPVariant* r) {
-            r->type = NPVariantType_Void; r->value.objectValue = NULL; return r; }
-        inline NPVariant* setVariantNull(NPVariant* r) {
-            r->type = NPVariantType_Null; r->value.objectValue = NULL; return r; }
-        
-        inline NPVariant* setVariant(NPVariant* r, bool v) {
-            r->type = NPVariantType_Bool; r->value.boolValue = v; return r; }
-        inline NPVariant* setVariant(NPVariant* r, uint32_t v) {
-            r->type = NPVariantType_Int32; r->value.intValue = v; return r; }
-        inline NPVariant* setVariant(NPVariant* r, int32_t v) {
-            r->type = NPVariantType_Int32; r->value.intValue = v; return r; }
-        inline NPVariant* setVariant(NPVariant* r, double v) {
-            r->type = NPVariantType_Double; r->value.doubleValue = v; return r; }
-        inline NPVariant* setVariant(NPVariant* r, NPObject* v) {
-            r->type = NPVariantType_Object; r->value.objectValue = v; return r; }
-        inline NPVariant* setVariant(NPVariant* r, NPString v) {
-            r->type = NPVariantType_String; r->value.stringValue = v; return r; }
-        inline NPVariant* setVariant(NPVariant* r, const NPUTF8* str, size_t len=0, size_t maxlen=1024) {
-            r->type = NPVariantType_String;
-            NPString& sz = r->value.stringValue;
-
+        NPString* setString(NPString* szTgt, const NPUTF8* str, size_t len=0, size_t maxlen=1024) {
+            if (!szTgt) return NULL;
             if (len == 0) len = ::strnlen(str, maxlen);
             char* buf = (char*) memAlloc(len);
             ::strncpy(buf, str, len);
-            sz.UTF8Characters = buf;
-            sz.UTF8Length = len;
-            return r;
-        }
+            szTgt->UTF8Characters = buf;
+            szTgt->UTF8Length = len;
+            return szTgt; }
+        NPString setString(const NPUTF8* str, size_t len=0, size_t maxlen=1024) {
+            NPString res = {0,0}; setString(&res, str, len, maxlen); return res; }
+        const NPUTF8* release(const NPUTF8* str) { return str ? memFreeEx(str) : NULL; }
+        NPString* release(NPString* str) {
+            if (str) { str->UTF8Characters = memFreeEx(str->UTF8Characters); str->UTF8Length = 0; }
+            return NULL; }
+
+        NPVariant* setVariantVoid(NPVariant* r) {
+            r->type = NPVariantType_Void; r->value.objectValue = NULL; return r; }
+        NPVariant* setVariantNull(NPVariant* r) {
+            r->type = NPVariantType_Null; r->value.objectValue = NULL; return r; }
+        
+        NPVariant* setVariant(NPVariant* r, bool v) {
+            r->type = NPVariantType_Bool; r->value.boolValue = v; return r; }
+        NPVariant* setVariant(NPVariant* r, uint32_t v) {
+            r->type = NPVariantType_Int32; r->value.intValue = v; return r; }
+        NPVariant* setVariant(NPVariant* r, int32_t v) {
+            r->type = NPVariantType_Int32; r->value.intValue = v; return r; }
+        NPVariant* setVariant(NPVariant* r, double v) {
+            r->type = NPVariantType_Double; r->value.doubleValue = v; return r; }
+        NPVariant* setVariant(NPVariant* r, NPObject* v) {
+            r->type = NPVariantType_Object; r->value.objectValue = v; return r; }
+        NPVariant* setVariant(NPVariant* r, NPString v) {
+            r->type = NPVariantType_String; r->value.stringValue = v; return r; }
+        NPVariant* setVariant(NPVariant* r, const NPUTF8* str, size_t len=0, size_t maxlen=1024) {
+            r->type = NPVariantType_String;
+            setString(&r->value.stringValue, str, len, maxlen);
+            return r; }
+
+        bool _evaluate(NPObject *npobj, const NPUTF8* script, size_t len=0, size_t maxlen=16384, NPVariant *result=NULL) {
+            NPString e_script = {0,0};
+            if (result) setVariantVoid(result);
+            if (result && npobj && setString(&e_script, script, len, maxlen)) {
+                if (!evaluate(npobj, &e_script, result))
+                    releaseVariantValue(result);
+                return releaseWithResult(&e_script, true);
+            } else return false; }
+        inline NPVariant evaluate(NPObject *npobj, const NPUTF8* script, size_t len=0, size_t maxlen=16384) {
+            NPVariant res; _evaluate(npobj, script, len, maxlen, &res); return res; }
+        inline NPVariant evalWindow(const NPUTF8* script, size_t len=0, size_t maxlen=16384) {
+            NPVariant res; _evaluate(NULL, script, len, maxlen, &res); return res; }
+        inline NPVariant evalElement(const NPUTF8* script, size_t len=0, size_t maxlen=16384) {
+            NPVariant res; _evaluate((NPObject*)1, script, len, maxlen, &res); return res; }
     };
 }
