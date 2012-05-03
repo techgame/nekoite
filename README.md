@@ -8,7 +8,7 @@
                 registerMethod("example", &ExampleObj::example);
             }
             virtual ExampleObj* self() { return this; }
-            static const char* s_className() { return "ExampleObj"; }
+            static const char* s_className() { return "[ExampleObj]"; }
 
             virtual bool example(NPIdentifier, const NPVariant *args, uint32_t argCount, NPVariant *result) {
                 return true;

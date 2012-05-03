@@ -44,7 +44,7 @@ namespace NPObjFramework {
         virtual ~NPScriptObj() {
             _class = NULL; referenceCount = 0; 
         };
-        virtual const char* className() { return "NPScriptObj"; }
+        virtual const char* className() { return "[NPScriptObj]"; }
         bool isNPObjectValid() { return _class && referenceCount>0; }
         virtual bool isValid() { return true; }
 
@@ -97,7 +97,6 @@ namespace NPObjFramework {
 
         virtual T* self() = 0;
         virtual const char* className() { return T::s_className(); }
-
 
         /*~ Method Registration ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
@@ -172,18 +171,17 @@ namespace NPObjFramework {
 
 
         /*~ Methods and Properties Enumeration ~~~~~~~~~~~~~~~*/
-        template <typename T>
-        NPIdentifier* _enumMap(NPIdentifier *tip, const T& map) {
-            T::const_iterator iter=map.begin(), end=map.end();
+        template <typename M>
+        NPIdentifier* _enumMap(NPIdentifier *tip, M iter, M end) {
             for (; iter!=end; ++iter) *(tip++) = iter->first;
             return tip; }
         virtual bool enumerate(NPIdentifier **value, uint32_t *count) {
             uint32_t nElems = properties.size() + propertyMethods.size() + methods.size();
             NPIdentifier *tip = (NPIdentifier*) host->memAlloc(nElems*sizeof(NPIdentifier));
             *value = tip; *count = nElems;
-            tip = _enumMap(tip, properties);
-            tip = _enumMap(tip, propertyMethods);
-            tip = _enumMap(tip, methods);
+            tip = _enumMap(tip, properties.begin(), properties.end());
+            tip = _enumMap(tip, propertyMethods.begin(), propertyMethods.end());
+            tip = _enumMap(tip, methods.begin(), methods.end());
             return true;
         }
         
@@ -232,13 +230,11 @@ namespace NPObjFramework {
             construct = _construct;
         }
 
-        NPObject* createObject(NPP npp) { 
+        T* create(NPP npp) { 
+            T* obj = createInstance(npp, this);
             NPHostObj* host = asNPHostObj(npp);
-            if (!host) return NULL;
-            NPObject* obj = host->createObject(this);
-            return obj = host->retainObject(obj); }
-
-        T* create(NPP npp) { return static_cast<T*>(createObject(npp)); }
+            if (host) host->retainObject(obj);
+            return obj; }
         static const char* className() { return T::s_className(); }
 
     protected:

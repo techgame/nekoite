@@ -176,6 +176,8 @@ namespace NPObjFramework {
         
         inline NPVariant* setVariant(NPVariant* r, bool v) {
             r->type = NPVariantType_Bool; r->value.boolValue = v; return r; }
+        inline NPVariant* setVariant(NPVariant* r, uint32_t v) {
+            r->type = NPVariantType_Int32; r->value.intValue = v; return r; }
         inline NPVariant* setVariant(NPVariant* r, int32_t v) {
             r->type = NPVariantType_Int32; r->value.intValue = v; return r; }
         inline NPVariant* setVariant(NPVariant* r, double v) {
@@ -194,6 +196,6 @@ namespace NPObjFramework {
             sz.UTF8Characters = buf;
             sz.UTF8Length = len;
             return r;
-        }            
+        }
     };
 }
