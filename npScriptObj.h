@@ -242,26 +242,12 @@ namespace NPObjFramework {
         static const char* className() { return T::s_className(); }
 
     protected:
-        static void log(const char* className, const char* method, const char* attrName=NULL) {
-            if (attrName)
-                npObjFramework_log("%s::%s(%s)\n", className, method, attrName);
-            else npObjFramework_log("%s::%s()\n", className, method); }
-        static void log(NPScriptObj* obj, const char* method) {
-            if (obj) log(obj->className(), method);
-            else log(className(), method); }
-        static void log(NPScriptObj* obj, const char* method, NPIdentifier name) {
-            if (obj) log(obj->className(), method, obj->identStr(name).c_str());
-            else log(className(), method, "???"); }
-        
-    protected:
         static T* createInstance(NPP npp, NPClass *aClass) {
             return new T(npp, aClass); }
         static NPObject* _allocate(NPP npp, NPClass *aClass) {
-            log(className(), "allocate");
             return createInstance(npp, aClass); }        
         static void _deallocate(NPObject *npobj) {
             NPScriptObj* obj = asNPScriptObj(npobj);
-            log(className(), "deallocate");
             if (obj) {
                 obj->deallocate();
                 delete obj;
@@ -269,46 +255,36 @@ namespace NPObjFramework {
         }
         static void _invalidate(NPObject *npobj) {
             NPScriptObj* obj = asNPScriptObj(npobj);
-            log(className(), "invalidate");
             if (obj) obj->invalidate(); }
 
         static bool _hasMethod(NPObject *npobj, NPIdentifier name) {
             NPScriptObj* obj = asNPScriptObj(npobj);
-            log(obj, "hasMethod", name);
-            return !obj ? false : obj->hasMethod(name); }
+            return obj ? obj->hasMethod(name) : false; }
         static bool _invoke(NPObject *npobj, NPIdentifier name, const NPVariant *args, uint32_t argCount, NPVariant *result) {
             NPScriptObj* obj = asNPScriptObj(npobj);
-            log(obj, "invoke", name);
-            return !obj ? false : obj->invoke(name, args, argCount, result); }
+            return obj ? obj->invoke(name, args, argCount, result) : false; }
         static bool _invokeDefault(NPObject *npobj, const NPVariant *args, uint32_t argCount, NPVariant *result) {
             NPScriptObj* obj = asNPScriptObj(npobj);
-            log(obj, "invokeDefault");
-            return !obj ? false : obj->invokeDefault(args, argCount, result); }
+            return obj ? obj->invokeDefault(args, argCount, result) : false; }
         static bool _construct(NPObject *npobj, const NPVariant *args, uint32_t argCount, NPVariant *result) {
             NPScriptObj* obj = asNPScriptObj(npobj);
-            log(obj, "construct");
-            return !obj ? false : obj->construct(args, argCount, result); }
+            return obj ? obj->construct(args, argCount, result) : false; }
 
         static bool _hasProperty(NPObject *npobj, NPIdentifier name) {
             NPScriptObj* obj = asNPScriptObj(npobj);
-            log(obj, "hasProperty", name);
-            return !obj ? false : obj->hasProperty(name); }
+            return obj ? obj->hasProperty(name) : false; }
         static bool _getProperty(NPObject *npobj, NPIdentifier name, NPVariant *result) {
             NPScriptObj* obj = asNPScriptObj(npobj);
-            log(obj, "getProperty", name);
-            return !obj ? false : obj->getProperty(name, result); }
+            return obj ? obj->getProperty(name, result) : false; }
         static bool _setProperty(NPObject *npobj, NPIdentifier name, const NPVariant *value) {
             NPScriptObj* obj = asNPScriptObj(npobj);
-            log(obj, "setProperty", name);
-            return !obj ? false : obj->setProperty(name, value); }
+            return obj ? obj->setProperty(name, value) : false; }
         static bool _removeProperty(NPObject *npobj, NPIdentifier name) {
             NPScriptObj* obj = asNPScriptObj(npobj);
-            log(obj, "removeProperty", name);
-            return !obj ? false : obj->removeProperty(name); }
+            return obj ? obj->removeProperty(name) : false; }
 
         static bool _enumerate(NPObject *npobj, NPIdentifier **value, uint32_t *count) {
             NPScriptObj* obj = asNPScriptObj(npobj);
-            log(obj, "enumerate");
-            return !obj ? false : obj->enumerate(value, count); }
+            return obj ? obj->enumerate(value, count) : false; }
     };
 }
