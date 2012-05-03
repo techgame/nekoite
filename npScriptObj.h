@@ -64,6 +64,7 @@ namespace NPObjFramework {
         virtual bool enumerate(NPIdentifier **value, uint32_t *count) { return false; }
 
         /* NPHost interface utilities */
+        inline void release(NPVariant& v) { host->releaseVariantValue(&v); }
         template <typename T> inline T release(T v) { return host->release(v); }
         template <typename T> inline NPIdentifier ident(T name) { return host->ident(name); }
         inline std::string identStr(NPIdentifier name) { return host->identStr(name); }
@@ -157,7 +158,7 @@ namespace NPObjFramework {
 
         virtual NPVariant* setPropertyRef(NPIdentifier name) {
             if (properties.count(name))
-                host->releaseVariantValue(&properties[name]);
+                release(&properties[name]);
             return &properties[name]; }
         virtual bool setProperty(NPIdentifier name, const NPVariant *value) {
             if (propertyMethods.count(name)>0) {
@@ -165,13 +166,13 @@ namespace NPObjFramework {
                 ScriptMethod fn = propertyMethods[name];
                 return fn ? (self()->*fn)(name, value, 1, &res) : false;
             } else if (properties.count(name))
-                host->releaseVariantValue(&properties[name]);
+                release(&properties[name]);
             properties[name] = *value; 
             return true; }
 
         virtual bool removeProperty(NPIdentifier name) {
             if (!properties.count(name)) return false;
-            host->releaseVariantValue(&properties[name]);
+            release(&properties[name]);
             properties.erase(name);
             return true; }
 

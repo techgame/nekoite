@@ -90,6 +90,7 @@ namespace NPObjFramework {
 
         NPVariant* releaseVariantValue(NPVariant *variant) {
             apiFn(api->releasevariantvalue)(variant); return NULL; }
+        inline void release(NPVariant& variant) { releaseVariantValue(&variant); }
         inline NPVariant* release(NPVariant *variant) { return releaseVariantValue(variant); }
         NPIdentifier getStringIdentifier(const NPUTF8 *name) {
             return apiFn(api->getstringidentifier)(name); }
@@ -215,19 +216,18 @@ namespace NPObjFramework {
             setString(&r->value.stringValue, str, len, maxlen);
             return r; }
 
-        bool _evaluate(NPObject *npobj, const NPUTF8* script, size_t len=0, size_t maxlen=16384, NPVariant *result=NULL) {
+        NPVariant _evaluate(NPObject *npobj, const NPUTF8* script, size_t len=0, size_t maxlen=16384) {
+            NPVariant v_result = {NPVariantType_Void, NULL};
             NPString e_script = {0,0};
-            if (result) setVariantVoid(result);
-            if (result && npobj && setString(&e_script, script, len, maxlen)) {
-                if (!evaluate(npobj, &e_script, result))
-                    releaseVariantValue(result);
-                return releaseWithResult(&e_script, true);
-            } else return false; }
-        inline NPVariant evaluate(NPObject *npobj, const NPUTF8* script, size_t len=0, size_t maxlen=16384) {
-            NPVariant res; _evaluate(npobj, script, len, maxlen, &res); return res; }
+            if (setString(&e_script, script, len, maxlen)) {
+                if (!evaluate(npobj, &e_script, &v_result))
+                    releaseVariantValue(&v_result);
+                release(&e_script);
+            }
+            return v_result; }
         inline NPVariant evalWindow(const NPUTF8* script, size_t len=0, size_t maxlen=16384) {
-            NPVariant res; _evaluate(NULL, script, len, maxlen, &res); return res; }
+            return _evaluate(NULL, script, len, maxlen); }
         inline NPVariant evalElement(const NPUTF8* script, size_t len=0, size_t maxlen=16384) {
-            NPVariant res; _evaluate((NPObject*)1, script, len, maxlen, &res); return res; }
+            return _evaluate((NPObject*)1, script, len, maxlen); }
     };
 }
