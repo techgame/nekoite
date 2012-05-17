@@ -201,4 +201,14 @@ void npObjFramework_log(const char* fmt, ...) {
     npObjFramework_log_v(fmt, args);
     va_end(args);
 }
+
+#if defined(_WIN32)
+bool npObjFramework_waitForDebugger() {
+    while (!::IsDebuggerPresent())
+        ::Sleep(10);
+    return true; }
+#else
+bool npObjFramework_waitForDebugger() { return false; }
+#endif
+
 #endif

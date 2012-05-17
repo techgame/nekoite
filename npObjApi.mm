@@ -11,4 +11,5 @@ void npObjFramework_log(const char* fmt, ...) {
     npObjFramework_log_v(fmt, args);
     va_end(args);
 }
+bool npObjFramework_waitForDebugger() { return false; }
 #endif

@@ -27,6 +27,7 @@
 
 void npObjFramework_log(const char* fmt, ...);
 void npObjFramework_log_v(const char* fmt, va_list args);
+bool npObjFramework_waitForDebugger();
 
 #include "npHostObj.h"
 #include "npTimers.h"
