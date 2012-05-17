@@ -51,8 +51,10 @@ namespace NPObjFramework {
                 return timerID;
             } else return 0; }
         static bool unscheduleTimer(NPHostObj* host, uint32_t timerID) {
-            if (host) host->unscheduleTimer(timerID);
-            return ctxmap.erase(timerID)>0; }
+            if (host && (0<ctxmap.count(timerID))) {
+                host->unscheduleTimer(timerID);
+                return ctxmap.erase(timerID)>0;
+            } else return false; }
         static bool unscheduleTimer(NPHostObj* host, NPTimerCtx* ctx) {
             return ctx ? unscheduleTimer(host, ctx->timerID) : false; }
 
@@ -62,5 +64,13 @@ namespace NPObjFramework {
             if (!ctx.tick(npp, timerID))
                 ctxmap.erase(timerID);
         }
+    };
+
+    template<typename T>
+    struct NPTimerTargetEx : public NPTimerTarget {
+        NPTimerCtx* timerCtx;
+        NPTimerTargetEx():timerCtx(NULL) {}
+        virtual bool timerRetain(NPTimerCtx* ctx) { timerCtx = ctx; return true; }
+        bool unscheduleTimerEx() { return NPTimerMgr::unscheduleTimer(dynamic_cast<T*>(this)->host, timerCtx); }
     };
 }

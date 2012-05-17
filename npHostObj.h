@@ -56,6 +56,7 @@ namespace NPObjFramework {
             return apiFn(api->createobject)(instance, aClass); }
         NPObject* retainObject(NPObject *npobj) {
             return apiFn(api->retainobject)(npobj); }
+        inline NPObject* retain(NPObject *npobj) { return retainObject(npobj); }
         NPObject* releaseObject(NPObject *npobj) {
             apiFn(api->releaseobject)(npobj); return NULL; }
         inline NPObject* release(NPObject *npobj) { return releaseObject(npobj); }
@@ -91,7 +92,14 @@ namespace NPObjFramework {
         NPVariant* releaseVariantValue(NPVariant *variant) {
             apiFn(api->releasevariantvalue)(variant); return NULL; }
         inline void release(NPVariant& variant) { releaseVariantValue(&variant); }
-        inline NPVariant* release(NPVariant *variant) { return releaseVariantValue(variant); }
+        inline NPVariant* release(NPVariant* variants, size_t count=1) {
+            for (size_t i=0; i<count; i++) releaseVariantValue(&variants[i]);
+            return NULL; }
+        inline NPVariant* retain(NPVariant *variant) {
+            if (variant && variant->type==NPVariantType_Object)
+                retain(variant->value.objectValue);
+            return variant; }
+        inline void retain(NPVariant& variant) { retain(&variant); }
         NPIdentifier getStringIdentifier(const NPUTF8 *name) {
             return apiFn(api->getstringidentifier)(name); }
         void getStringIdentifiers(const NPUTF8 **names, int32_t nameCount, NPIdentifier *identifiers) {

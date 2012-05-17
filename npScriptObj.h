@@ -64,8 +64,14 @@ namespace NPObjFramework {
         virtual bool enumerate(NPIdentifier **value, uint32_t *count) { return false; }
 
         /* NPHost interface utilities */
-        inline void release(NPVariant& v) { host->releaseVariantValue(&v); }
+        inline void retain(NPVariant& v) { host->retain(v); }
+        inline NPObject* retain() { return host->retain(this); }
+        template <typename T> inline T retain(T v) { return host->retain(v); }
+
+        inline void release(NPVariant& v) { host->release(v); }
         template <typename T> inline T release(T v) { return host->release(v); }
+        template <typename T> inline T release(T v, size_t count) { return host->release(v, count); }
+
         template <typename T> inline NPIdentifier ident(T name) { return host->ident(name); }
         inline std::string identStr(NPIdentifier name) { return host->identStr(name); }
         inline NPVariant* setVariantVoid(NPVariant* r) { return host->setVariantVoid(r); }
@@ -74,10 +80,8 @@ namespace NPObjFramework {
 
         uint32_t scheduleTimer(NPTimerTarget* tgt, uint32_t interval, bool repeat=true) {
             return NPTimerMgr::scheduleTimer(host, tgt, interval, repeat); }
-        bool unscheduleTimer(uint32_t timerID) {
-            return NPTimerMgr::unscheduleTimer(host, timerID); }
-        bool unscheduleTimer(NPTimerCtx* ctx) {
-            return NPTimerMgr::unscheduleTimer(host, ctx); }
+        template <typename T> bool unscheduleTimer(T tgt) {
+            return NPTimerMgr::unscheduleTimer(host, tgt); }
     };
 
     inline NPScriptObj* asNPScriptObj(NPObject* npobj) {
@@ -149,7 +153,7 @@ namespace NPObjFramework {
             return properties.count(name) ? &properties[name] : NULL; }
         virtual bool getProperty(NPIdentifier name, NPVariant *result) {
             if (properties.count(name)>0) {
-                *result = properties[name];
+                retain(*result = properties[name]);
                 return true;
             } else if (propertyMethods.count(name)>0) {
                 ScriptMethod fn = propertyMethods[name];
