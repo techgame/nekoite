@@ -71,6 +71,7 @@ namespace NPObjFramework {
         NPTimerCtx* timerCtx;
         NPTimerTargetEx():timerCtx(NULL) {}
         virtual bool timerRetain(NPTimerCtx* ctx) { timerCtx = ctx; return true; }
-        bool unscheduleTimerEx() { return NPTimerMgr::unscheduleTimer(dynamic_cast<T*>(this)->host, timerCtx); }
+        bool unscheduleTimerEx() { NPTimerCtx* ctx=timerCtx; timerCtx = NULL;
+            return NPTimerMgr::unscheduleTimer(dynamic_cast<T*>(this)->host, ctx); }
     };
 }

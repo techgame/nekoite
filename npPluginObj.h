@@ -3,7 +3,6 @@
 #include "npObjFramework.h"
 
 namespace NPObjFramework {
-
     struct NPPluginObj {
         virtual ~NPPluginObj() {}
         virtual NPError initialize(NPMIMEType pluginType, uint16_t mode, 
@@ -32,23 +31,16 @@ namespace NPObjFramework {
     };
 
     inline NPPluginObj* asNPPluginObj(NPP instance) {
-        return static_cast<NPPluginObj*>(instance?instance->pdata:NULL);
-    }
+        return static_cast<NPPluginObj*>(instance?instance->pdata:NULL); }
     inline NPHostObj* asNPHostObj(NPP instance) {
         NPPluginObj* plugin = asNPPluginObj(instance);
-        return plugin ? plugin->hostObj() : NULL;
-    }
-}
-
-/* implement createNPPluginObj to create concrete instance of an NPPluginObj */
-NPObjFramework::NPPluginObj* createNPPluginObj(NPP pluginInstance, NPNetscapeFuncs* hostApi);
-NPObjFramework::NPPluginObj* destroyNPPluginObj(NPP inst, NPObjFramework::NPPluginObj* obj);
+        return plugin ? plugin->hostObj() : NULL; }
 
 
-namespace NPObjFramework {
     struct NPPluginObjBase : NPPluginObj {
         NPPluginObjBase(NPP inst, NPNetscapeFuncs* hostApi) 
-            : host(&_hostObj), _hostObj(inst, hostApi) {}
+            : host(&_hostObj), _hostObj(inst, hostApi, NULL)
+        { host->plugin = this; }
         virtual ~NPPluginObjBase() {}
 
         NPHostObj* host; NPHostObj _hostObj;
@@ -79,10 +71,8 @@ namespace NPObjFramework {
         bool unscheduleTimer(NPTimerCtx* ctx) {
             return NPTimerMgr::unscheduleTimer(host, ctx); }
     };
-}
 
 
-namespace NPObjFramework {
     /*~ Utility methods ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
     template<typename T>

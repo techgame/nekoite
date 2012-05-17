@@ -17,9 +17,10 @@ namespace NPObjFramework {
     struct NPHostObj {
         NPP instance;
         NPNetscapeFuncs* api;
+        NPPluginObj* plugin;
 
-        NPHostObj(NPP instance_p, NPNetscapeFuncs* api_p) 
-            : instance(instance_p), api(api_p) {}
+        NPHostObj(NPP instance_p, NPNetscapeFuncs* api_p, NPPluginObj* plugin_p) 
+            : instance(instance_p), api(api_p), plugin(plugin_p) {}
 
         template <typename T, typename R>
         inline R releaseWithResult(T obj, R res) { release(obj); return res; }
@@ -182,11 +183,26 @@ namespace NPObjFramework {
         inline NPIdentifier ident(uint32_t idxName) { return getIntIdentifier(idxName); }
         std::string identStr(NPIdentifier name, const char* absent="[null]") {
             NPUTF8* szName = utf8FromIdentifier(name);
-            if (szName) return absent;
-            std::string res(szName);
-            szName = memFreeEx(szName);
-            return res; }
-        
+            if (szName) {
+                std::string res(szName);
+                szName = memFreeEx(szName);
+                return res; }
+            std::stringstream oss;
+            oss << intFromIdentifier(name);
+            return oss.str(); }
+        const char* variantStr(const NPVariant* r) {
+            if (!r)                     return "<NPVariant INVALID>";
+            switch (r->type) {
+            case NPVariantType_Void:    return "<NPVariant void>";
+            case NPVariantType_Null:    return "<NPVariant null>";
+            case NPVariantType_Bool:    return "<NPVariant bool>";
+            case NPVariantType_Int32:   return "<NPVariant int32>";
+            case NPVariantType_Double:  return "<NPVariant double>";
+            case NPVariantType_String:  return "<NPVariant string>";
+            case NPVariantType_Object:  return "<NPVariant object>";
+            default:                    return "<NPVariant ???>";
+            }}
+
         NPString* setString(NPString* szTgt, const NPUTF8* str, size_t len=0, size_t maxlen=1024) {
             if (!szTgt) return NULL;
             if (len == 0) len = ::strnlen(str, maxlen);

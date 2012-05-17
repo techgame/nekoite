@@ -74,7 +74,7 @@ NPError NPP_Destroy(NPP instance, NPSavedData** save) {
     if (obj) {
         try {
             obj->destroy(save);
-            obj = destroyNPPluginObj(instance, obj);
+            delete obj; obj = NULL;
         } catch (NPException exc) {
             return exc.err;
         }
@@ -185,30 +185,31 @@ void NPP_LostFocus(NPP instance) {
 NPTimerCtx::map NPTimerMgr::ctxmap;
 
 #if !defined(__APPLE__)
-void npObjFramework_log_v(const char* fmt, va_list args) {
-    char szBuf[4096];
-    vsprintf(szBuf, fmt, args);
-#if defined(_WIN32)
-    ::OutputDebugStringA(szBuf);
-#endif
-#if !defined(_WINDOWS)
-    puts(szBuf);
-#endif
-}
-void npObjFramework_log(const char* fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    npObjFramework_log_v(fmt, args);
-    va_end(args);
-}
+namespace NPObjFramework {
+    void log_v(const char* fmt, va_list args) {
+        char szBuf[4096];
+        vsprintf(szBuf, fmt, args);
+        #if defined(_WIN32)
+        ::OutputDebugStringA(szBuf);
+        #endif
+        #if !defined(_WINDOWS)
+        puts(szBuf);
+        #endif
+    }
+    void log(const char* fmt, ...) {
+        va_list args;
+        va_start(args, fmt);
+        log_v(fmt, args);
+        va_end(args);
+    }
 
-#if defined(_WIN32)
-bool npObjFramework_waitForDebugger() {
-    while (!::IsDebuggerPresent())
-        ::Sleep(10);
-    return true; }
-#else
-bool npObjFramework_waitForDebugger() { return false; }
-#endif
-
+    #if defined(_WIN32)
+    bool waitForDebugger() {
+        while (!::IsDebuggerPresent())
+            ::Sleep(10);
+        return true; }
+    #else
+    bool waitForDebugger() { return false; }
+    #endif
+}
 #endif

@@ -12,24 +12,14 @@ namespace NPObjFramework {
         virtual NPError initStart(NPMIMEType pluginType, uint16_t mode) {
             host->setValue(NPPVpluginWindowBool, (void *)false);
             host->setValue(NPPVpluginTransparentBool, (void *)true);
-
             return NPERR_NO_ERROR; 
         }
-
         virtual NPError getValue(NPPVariable variable, void *value) {
             switch (variable) {
-            case NPPVpluginNameString:
-                return setvoid(value, pluginName());
-            case NPPVpluginDescriptionString:
-                return setvoid(value, pluginDescription());
             case NPPVpluginScriptableNPObject:
-                return setvoid(value, rootScriptObj());
-            default: return NPERR_GENERIC_ERROR;
-            }
-        }
+                return setvoid(value, host->retain(rootScriptObj()));
+            default: return NPERR_GENERIC_ERROR; } }
 
-        virtual const char* pluginName() = 0;
-        virtual const char* pluginDescription() = 0;
         virtual NPObject* rootScriptObj() = 0;
     };
 
@@ -49,7 +39,7 @@ namespace NPObjFramework {
         virtual bool isValid() { return true; }
 
         virtual void deallocate() { }
-        virtual void invalidate() {}
+        virtual void invalidate() { }
 
         virtual bool hasMethod(NPIdentifier name) { return false; }
         virtual bool invoke(NPIdentifier name, const NPVariant *args, uint32_t argCount, NPVariant *result) { return false; }
@@ -76,7 +66,8 @@ namespace NPObjFramework {
         inline std::string identStr(NPIdentifier name) { return host->identStr(name); }
         inline NPVariant* setVariantVoid(NPVariant* r) { return host->setVariantVoid(r); }
         inline NPVariant* setVariantNull(NPVariant* r) { return host->setVariantNull(r); }
-        template <typename T> inline NPVariant* setVariant(NPVariant* r, T v) { return host->setVariant(r, v); }
+        template <typename V> inline NPVariant* setVariant(NPVariant* r, V v) { return host->setVariant(r, v); }
+        inline const char* variantStr(const NPVariant* r) { return host->variantStr(r); }
 
         uint32_t scheduleTimer(NPTimerTarget* tgt, uint32_t interval, bool repeat=true) {
             return NPTimerMgr::scheduleTimer(host, tgt, interval, repeat); }
@@ -84,9 +75,9 @@ namespace NPObjFramework {
             return NPTimerMgr::unscheduleTimer(host, tgt); }
     };
 
-    inline NPScriptObj* asNPScriptObj(NPObject* npobj) {
+    inline NPScriptObj* asNPScriptObj(NPObject* npobj, bool checkValid=true) {
         NPScriptObj* obj = static_cast<NPScriptObj*>(npobj);
-        return obj && obj->isNPObjectValid() && obj->isValid() ? obj : NULL;
+        return obj && obj->isNPObjectValid() && (!checkValid || obj->isValid()) ? obj : NULL;
     }
 
 
@@ -148,9 +139,6 @@ namespace NPObjFramework {
             if (properties.count(name) > 0) return true;
             if (propertyMethods.count(name) > 0) return true;
             return false; }
-
-        virtual NPVariant* getPropertyRef(NPIdentifier name) {
-            return properties.count(name) ? &properties[name] : NULL; }
         virtual bool getProperty(NPIdentifier name, NPVariant *result) {
             if (properties.count(name)>0) {
                 retain(*result = properties[name]);
@@ -159,11 +147,6 @@ namespace NPObjFramework {
                 ScriptMethod fn = propertyMethods[name];
                 return fn ? (self()->*fn)(name, NULL, 0, result) : false;
             } else return false; }
-
-        virtual NPVariant* setPropertyRef(NPIdentifier name) {
-            if (properties.count(name))
-                release(&properties[name]);
-            return &properties[name]; }
         virtual bool setProperty(NPIdentifier name, const NPVariant *value) {
             if (propertyMethods.count(name)>0) {
                 NPVariant res = {NPVariantType_Void, NULL};
@@ -171,9 +154,8 @@ namespace NPObjFramework {
                 return fn ? (self()->*fn)(name, value, 1, &res) : false;
             } else if (properties.count(name))
                 release(&properties[name]);
-            properties[name] = *value; 
+            retain(properties[name] = *value);
             return true; }
-
         virtual bool removeProperty(NPIdentifier name) {
             if (!properties.count(name)) return false;
             release(&properties[name]);
@@ -195,26 +177,15 @@ namespace NPObjFramework {
             tip = _enumMap(tip, methods.begin(), methods.end());
             return true;
         }
-        
 
         /*~ Adaptors for NPIdentifier and NPVariants ~~~~~~~~~*/
         template <typename N>
         inline bool hasProperty(N name) {
             return hasProperty(ident(name)); }
-        template <typename N>
-        inline NPVariant* getPropertyRef(N name) {
-            return getPropertyRef(ident(name)); }
-
-        template <typename N>
-        inline bool setProperty(N name, const NPVariant *value) {
-            return setProperty(ident(name), value); }
-        template <typename N>
-        inline NPVariant* setPropertyRef(N name) {
-            return setPropertyRef(ident(name)); }
-        template <typename V, typename N>
-        inline void setProperty(N name, V value) {
-            setVariant(setPropertyRef(ident(name)), value); }
-
+        template <typename N, typename V>
+        inline bool setProperty(N name, V value) {
+            NPVariant vv; setVariant(&vv, value);
+            return setProperty(ident(name), (const NPVariant*)&vv); }            
         template <typename N>
         inline bool removeProperty(N name) {
             return removeProperty(ident(name)); }
@@ -241,27 +212,26 @@ namespace NPObjFramework {
             construct = _construct;
         }
 
-        T* create(NPP npp) { 
-            T* obj = createInstance(npp, this);
-            NPHostObj* host = asNPHostObj(npp);
-            if (host) host->retainObject(obj);
-            return obj; }
+        T* create(NPP npp) { return createInstance(npp, this); }
         static const char* className() { return T::s_className(); }
 
     protected:
         static T* createInstance(NPP npp, NPClass *aClass) {
-            return new T(npp, aClass); }
+            T* obj = new T(npp, aClass);
+            if (obj && !obj->isValid()) {
+                delete obj; obj=NULL; }
+            return obj; }
         static NPObject* _allocate(NPP npp, NPClass *aClass) {
             return createInstance(npp, aClass); }        
         static void _deallocate(NPObject *npobj) {
-            NPScriptObj* obj = asNPScriptObj(npobj);
+            NPScriptObj* obj = asNPScriptObj(npobj, false);
             if (obj) {
                 obj->deallocate();
                 delete obj;
             }
         }
         static void _invalidate(NPObject *npobj) {
-            NPScriptObj* obj = asNPScriptObj(npobj);
+            NPScriptObj* obj = asNPScriptObj(npobj, false);
             if (obj) obj->invalidate(); }
 
         static bool _hasMethod(NPObject *npobj, NPIdentifier name) {

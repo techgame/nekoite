@@ -2,6 +2,7 @@
 #pragma once
 
 #include <string>
+#include <sstream>
 #include <map>
 
 #if defined(_WIN32)
@@ -25,9 +26,16 @@
 #include "npapi/npfunctions.h"
 #include "npapi/npruntime.h"
 
-void npObjFramework_log(const char* fmt, ...);
-void npObjFramework_log_v(const char* fmt, va_list args);
-bool npObjFramework_waitForDebugger();
+namespace NPObjFramework {
+    struct NPPluginObj;
+
+    void log(const char* fmt, ...);
+    void log_v(const char* fmt, va_list args);
+    bool waitForDebugger();
+}
+
+/* implement createNPPluginObj in your library by creating concrete instance of an NPPluginObj */
+NPObjFramework::NPPluginObj* createNPPluginObj(NPP pluginInstance, NPNetscapeFuncs* hostApi);
 
 #include "npHostObj.h"
 #include "npTimers.h"
