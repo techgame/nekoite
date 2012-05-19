@@ -85,6 +85,7 @@ namespace NPObjFramework {
 
     template <typename T>
     struct NPScriptObjStd : NPScriptObj {
+        typedef NPScriptObjStd<T> base_t;
         typedef bool (T::*ScriptMethod)(NPIdentifier name, const NPVariant *args, uint32_t argCount, NPVariant *result);
         typedef struct {bool isProperty; const char* utf8Name; ScriptMethod fnMethod; } MethodTableEntry;
         typedef std::map<NPIdentifier, ScriptMethod> MethodMap;
