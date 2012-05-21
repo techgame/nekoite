@@ -2,7 +2,7 @@
 #pragma once
 #include "npObjFramework.h"
 
-namespace NPObjFramework {
+namespace Nekoite {
 
     struct NPException { 
         NPException(NPError err_p):err(err_p){};

@@ -26,8 +26,8 @@
 #include "npapi/npfunctions.h"
 #include "npapi/npruntime.h"
 
-namespace NPObjFramework {
-    struct NPPlugin;
+namespace Nekoite {
+    struct NekoiteRoot;
     struct NPPluginObj;
 
     void log(const char* fmt, ...);
@@ -35,7 +35,7 @@ namespace NPObjFramework {
     bool waitForDebugger();
 }
 
-NPObjFramework::NPPlugin* rootNPPlugin();
+Nekoite::NekoiteRoot* nekoiteRoot();
 
 #include "npHostObj.h"
 #include "npTimers.h"

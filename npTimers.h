@@ -2,7 +2,7 @@
 #pragma once
 #include "npObjFramework.h"
 
-namespace NPObjFramework {
+namespace Nekoite {
     /*~ Timer re-association logic ~~~~~~~~~~~~~~~~~~~*/
 
     struct NPTimerCtx;

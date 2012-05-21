@@ -2,7 +2,7 @@
 #pragma once
 #include "npObjFramework.h"
 
-namespace NPObjFramework {
+namespace Nekoite {
     /*~ Scriptable Plugin Obj Definition ~~~~~~~~~~~~~~~~~*/
 
     struct NPScriptablePluginObj : NPPluginObjBase {

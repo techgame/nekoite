@@ -2,15 +2,15 @@
 #pragma once
 #include "npObjFramework.h"
 
-namespace NPObjFramework {
-    struct NPPlugin {
+namespace Nekoite {
+    struct NekoiteRoot {
         virtual void    initPlugin(NPNetscapeFuncs* hostApi, NPPluginFuncs* pluginApi) {}
         virtual NPError clearSiteData(const char* site, uint64_t flags, uint64_t maxAge) { return NPERR_NO_ERROR; }
         virtual char**  getSitesWithData() { return NULL; }
         virtual NPPluginObj* create(NPP pluginInstance, NPNetscapeFuncs* hostApi) = 0;
     };
     template<typename T>
-    struct NPPlugin_t : public NPPlugin {
+    struct NekoiteRoot_t : public NekoiteRoot {
         virtual T* create(NPP pluginInstance, NPNetscapeFuncs* hostApi) {
             return new T(pluginInstance, hostApi); }
     };

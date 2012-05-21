@@ -6,7 +6,7 @@ extern "C" {
     NPError OSCALL NP_Shutdown(void);
 }
 
-using namespace NPObjFramework;
+using namespace Nekoite;
 
 static NPNetscapeFuncs* g_hostApi;
 
@@ -53,7 +53,7 @@ NPError OSCALL NP_GetEntryPoints(NPPluginFuncs* pluginApi) {
         pluginApi->clearsitedata = NPP_ClearSiteData;
         pluginApi->getsiteswithdata = NPP_GetSitesWithData;
     }
-    NPPlugin* root = rootNPPlugin();
+    NekoiteRoot* root = nekoiteRoot();
     if (root) root->initPlugin(g_hostApi, pluginApi);
     return NPERR_NO_ERROR;
 }
@@ -67,7 +67,7 @@ NPError NPP_New(NPMIMEType pluginType, NPP instance, uint16_t mode,
         int16_t argc, char* argn[], char* argv[], NPSavedData* saved)
 {
     try {
-        NPPlugin* root = rootNPPlugin();
+        NekoiteRoot* root = nekoiteRoot();
         if (!root) return NPERR_GENERIC_ERROR;
         NPPluginObj* obj = root->create(instance, g_hostApi);
         if (!obj) return NPERR_GENERIC_ERROR;
@@ -188,13 +188,13 @@ void NPP_LostFocus(NPP instance) {
 
 NPError NPP_ClearSiteData(const char* site, uint64_t flags, uint64_t maxAge) {
     try {
-        NPPlugin* root = rootNPPlugin();
+        NekoiteRoot* root = nekoiteRoot();
         return root ? root->clearSiteData(site, flags, maxAge) : NPERR_GENERIC_ERROR;
     } catch (NPException) { return NPERR_GENERIC_ERROR; }
 }
 char** NPP_GetSitesWithData(void) {
     try {
-        NPPlugin* root = rootNPPlugin();
+        NekoiteRoot* root = nekoiteRoot();
         return root ? root->getSitesWithData() : NULL;
     } catch (NPException) { return NULL; }
 }
@@ -206,7 +206,7 @@ char** NPP_GetSitesWithData(void) {
 NPTimerCtx::map NPTimerMgr::ctxmap;
 
 #if !defined(__APPLE__)
-namespace NPObjFramework {
+namespace Nekoite {
     void log_v(const char* fmt, va_list args) {
         char szBuf[4096];
         vsprintf(szBuf, fmt, args);
