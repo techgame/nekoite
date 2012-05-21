@@ -9,8 +9,8 @@ namespace Nekoite {
     struct NPScriptablePluginObj : NPPluginObjBase {
         typedef NPScriptablePluginObj<T> base_t;
 
-        NPScriptablePluginObj(NPP inst, NPNetscapeFuncs* hostApi) 
-            : NPPluginObjBase(inst, hostApi), _rootObj(NULL)
+        NPScriptablePluginObj(NPP inst) 
+            : NPPluginObjBase(inst), _rootObj(NULL)
         {}
         virtual ~NPScriptablePluginObj() {
             if (_rootObj) _rootObj = host->release(_rootObj);}
@@ -36,15 +36,19 @@ namespace Nekoite {
         NPHostObj* host;
 
         NPScriptObj(NPP npp, NPClass *aClass) : host(asNPHostObj(npp)) {
-            _class = aClass; referenceCount = 1; }
-        virtual ~NPScriptObj() { _class = NULL; referenceCount = 0; };
+            _class = aClass; referenceCount = 1;
+            host->trackObj(this);
+        }
+        virtual ~NPScriptObj() {
+            host = host->untrackObj(this);
+            _class = NULL; referenceCount = 0; };
         virtual const char* className() { return "NPScriptObj"; }
         bool isNPObjectValid(bool bSkipValid=false) {
             return _class && referenceCount>0 && (bSkipValid || isValid()); }
         virtual bool isValid() { return true; }
 
         virtual void deallocate() { }
-        virtual void invalidate() { }
+        virtual void invalidate() { clearProperties(); }
 
         virtual bool hasMethod(NPIdentifier name) { return false; }
         virtual bool invoke(NPIdentifier name, const NPVariant *args, uint32_t argCount, NPVariant *result) { return false; }
@@ -55,9 +59,10 @@ namespace Nekoite {
         virtual bool getProperty(NPIdentifier name, NPVariant *result) { return false; }
         virtual bool setProperty(NPIdentifier name, const NPVariant *value) { return false; }
         virtual bool removeProperty(NPIdentifier name) { return false; }
+        virtual void clearProperties() { }
 
         virtual bool enumerate(NPIdentifier **value, uint32_t *count) { return false; }
-
+        
         /* NPHost interface utilities */
         inline void retain(NPVariant& v) { host->retain(v); }
         inline NPObject* retain() { return host->retain(this); }
@@ -74,10 +79,10 @@ namespace Nekoite {
         template <typename V> inline NPVariant* setVariant(NPVariant* r, V v) { return host->setVariant(r, v); }
         inline const char* variantStr(const NPVariant* r) { return host->variantStr(r); }
 
-        uint32_t scheduleTimer(NPTimerTarget* tgt, uint32_t interval, bool repeat=true) {
-            return NPTimerMgr::scheduleTimer(host, tgt, interval, repeat); }
-        template <typename T> bool unscheduleTimer(T tgt) {
-            return NPTimerMgr::unscheduleTimer(host, tgt); }
+        virtual void onTimer(uint32_t timerID) {};
+        uint32_t scheduleTimer(uint32_t interval, bool repeat=true) {
+            return host->scheduleTimer(this, interval, repeat); }
+        void unscheduleTimer() { host->unscheduleTimer(this); }
     };
 
     inline NPScriptObj* asNPScriptObj(NPObject* npobj, bool bSkipValid=false) {
@@ -167,6 +172,13 @@ namespace Nekoite {
             release(&properties[name]);
             properties.erase(name);
             return true; }
+
+        template <typename M>
+        void _releaseEach(M iter, M end) {
+            for (; iter!=end; ++iter) release(iter->second); }
+        virtual void clearProperties() {
+            _releaseEach(properties.begin(), properties.end());
+            properties.clear(); }
 
 
         /*~ Methods and Properties Enumeration ~~~~~~~~~~~~~~~*/

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <sstream>
+#include <set>
 #include <map>
 
 #if defined(_WIN32)
@@ -29,6 +30,7 @@
 namespace Nekoite {
     struct NekoiteRoot;
     struct NPPluginObj;
+    struct NPScriptObj;
 
     void log(const char* fmt, ...);
     void log_v(const char* fmt, va_list args);
@@ -38,7 +40,6 @@ namespace Nekoite {
 Nekoite::NekoiteRoot* nekoiteRoot();
 
 #include "npHostObj.h"
-#include "npTimers.h"
 #include "npPluginObj.h"
 #include "npScriptObj.h"
 

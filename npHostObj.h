@@ -16,21 +16,42 @@ namespace Nekoite {
         return fn; }
 
     struct NPHostObj {
-        NPNetscapeFuncs* api;
         NPP instance;
+        static NPNetscapeFuncs* api;
+        static std::set<NPHostObj*> _allHosts;
 
-        NPHostObj(NPP instance_p, NPNetscapeFuncs* api_p) 
-         : api(api_p), instance(instance_p) {}
-        
+        NPHostObj(NPP instance_p) : instance(instance_p)
+        { _allHosts.insert(this); }
+        ~NPHostObj()
+        { _allHosts.erase(this); }
+
+        inline operator NPP() const { return instance; }
         NPPluginObj* plugin() const {
             return !instance ? static_cast<NPPluginObj*>(instance->pdata) : NULL; }
 
+        void onPluginDestroyed() { instance = NULL; _destroyIfDone(); }
+        bool _destroyIfDone() {
+            if (instance || _allObjects.size()>0)
+                return false;
+            delete this;
+            return true;
+        }
+
+        std::set<NPScriptObj*> _allObjects;
+        NPHostObj* trackObj(NPScriptObj* obj) {
+            _allObjects.insert(obj);
+            return this; }
+        NPHostObj* untrackObj(NPScriptObj* obj) {
+            _allObjects.erase(obj);
+            _destroyIfDone();
+            return NULL; }
+
+        /* General API */
         template <typename T, typename R>
         inline R releaseWithResult(T obj, R res) { release(obj); return res; }
         template <typename T>
         inline T* memFreeEx(T* ptr) { memFree((void*)ptr); return NULL; }
 
-        /* General API */
         void status(const char* message) { return apiFn(api->status, instance)(instance, message); }
         const char* userAgent() { return apiFn(api->uagent, instance)(instance); }
 
@@ -43,19 +64,31 @@ namespace Nekoite {
             return apiFn(api->getvalue, instance)(instance, variable, value); }
         NPError setValue(NPPVariable variable, void *value) {
             return apiFn(api->setvalue, instance)(instance, variable, value); }
-        uint32_t scheduleTimer(uint32_t interval, NPBool repeat, void (*timerFunc)(NPP npp, uint32_t timerID)) {
-            return apiFn(api->scheduletimer, instance)(instance, interval, repeat, timerFunc); }
-        void unscheduleTimer(uint32_t timerID) {
-            return apiFn(api->unscheduletimer, instance)(instance, timerID); }
         void pluginThreadAsyncCall(void (*func) (void *), void *userData) {
             return apiFn(api->pluginthreadasynccall, instance)(instance, func, userData); }
+
+        /* Timer API */
+        typedef std::map<uint32_t, NPScriptObj*> ObjTimerMap;
+        ObjTimerMap _allTimers;
+        void _dispatchTimerEvent(uint32_t timerID); 
+        static void _on_timer_s(NPP npp, uint32_t timerID);
+        
+        uint32_t scheduleTimer(uint32_t interval, NPBool repeat, void (*timerFunc)(NPP npp, uint32_t timerID)) {
+            return apiFn(api->scheduletimer, instance)(instance, interval, repeat, timerFunc); }
+        uint32_t scheduleTimer(NPScriptObj* obj, uint32_t interval, bool repeat=true);
+
+        void unscheduleTimer(uint32_t timerID) {
+            _allTimers.erase(timerID);
+            if (instance) apiFn(api->unscheduletimer, instance)(instance, timerID); }
+        void unscheduleTimer(NPScriptObj* obj);
+
+        /* Scripting Support */
 
         NPObject* domWindow(NPObject* res=NULL) {
             return (NPERR_NO_ERROR == getValue(NPNVWindowNPObject, &res)) ? res : NULL; }
         NPObject* domElement(NPObject* res=NULL) {
             return (NPERR_NO_ERROR == getValue(NPNVPluginElementNPObject, &res)) ? res : NULL; }
 
-        /* Scripting Support */
         NPObject* createObject(NPClass *aClass) {
             return apiFn(api->createobject, instance)(instance, aClass); }
         NPObject* retainObject(NPObject *npobj) {

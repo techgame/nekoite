@@ -4,24 +4,47 @@
 #endif
 #include "npObjFramework.h"
 
+namespace Nekoite {
+    NPNetscapeFuncs* NPHostObj::api = NULL;
+    std::set<NPHostObj*> NPHostObj::_allHosts;
+
+    void NPHostObj::_on_timer_s(NPP npp, uint32_t timerID) {
+        NPHostObj* host = asNPHostObj(npp);
+        if (host) host->_dispatchTimerEvent(timerID); }
+    void NPHostObj::_dispatchTimerEvent(uint32_t timerID) {
+        ObjTimerMap::iterator iter=_allTimers.find(timerID);
+        if (iter == _allTimers.end()) return;
+        NPScriptObj* obj = iter->second;
+        if (obj && _allObjects.count(obj)>0)
+            obj->onTimer(timerID);
+        else _allTimers.erase(iter); }
+    uint32_t NPHostObj::scheduleTimer(NPScriptObj* obj, uint32_t interval, bool repeat) {
+        if (!obj) return 0;
+        uint32_t timerID = scheduleTimer(interval, repeat, _on_timer_s);
+        _allTimers[timerID] = obj;
+        return timerID;}
+    void NPHostObj::unscheduleTimer(NPScriptObj* obj) {
+        ObjTimerMap::iterator iter=_allTimers.begin(), end=_allTimers.end();
+        for(;iter!=end;iter++)
+            if (iter->second == obj)
+                unscheduleTimer(iter->first); }
+}
+using namespace Nekoite;
+
 extern "C" {
     NPError OSCALL NP_Initialize(NPNetscapeFuncs *browserApi);
     NPError OSCALL NP_GetEntryPoints(NPPluginFuncs *pluginApi);
     NPError OSCALL NP_Shutdown(void);
 }
 
-using namespace Nekoite;
-
-static NPNetscapeFuncs* g_hostApi;
-
 #if !defined(XP_UNIX) || defined(XP_MACOSX) || defined(XP_WIN)
 NPError OSCALL NP_Initialize(NPNetscapeFuncs* hostApi) {
-    g_hostApi = hostApi;
+    NPHostObj::api = hostApi;
     return NPERR_NO_ERROR;
 }
 #else
 NPError OSCALL NP_Initialize(NPNetscapeFuncs* hostApi, NPPluginFuncs* pluginApi) {
-    g_hostApi = hostApi;
+    NPHostObj::api = hostApi;
     NP_GetEntryPoints(pluginApi);
     return NPERR_NO_ERROR;
 }
@@ -58,7 +81,7 @@ NPError OSCALL NP_GetEntryPoints(NPPluginFuncs* pluginApi) {
         pluginApi->getsiteswithdata = NPP_GetSitesWithData;
     }
     NekoiteRoot* root = nekoiteRoot();
-    if (root) root->initPlugin(g_hostApi, pluginApi);
+    if (root) root->initPlugin(pluginApi);
     return NPERR_NO_ERROR;
 }
 
@@ -73,7 +96,7 @@ NPError NPP_New(NPMIMEType pluginType, NPP instance, uint16_t mode,
     try {
         NekoiteRoot* root = nekoiteRoot();
         if (!root) return NPERR_GENERIC_ERROR;
-        NPPluginObj* obj = root->create(instance, g_hostApi);
+        NPPluginObj* obj = root->create(instance);
         if (!obj) return NPERR_GENERIC_ERROR;
         instance->pdata = (void*) obj;
         return obj->initialize(pluginType, mode, argc, argn, argv, saved);
@@ -82,12 +105,13 @@ NPError NPP_New(NPMIMEType pluginType, NPP instance, uint16_t mode,
 
 NPError NPP_Destroy(NPP instance, NPSavedData** save) {
     NPPluginObj* obj = asNPPluginObj(instance);
-    instance->pdata = NULL;
     if (obj) {
         try {
             obj->destroy(save);
             delete obj; obj = NULL;
+            instance->pdata = NULL;
         } catch (NPException exc) {
+            instance->pdata = NULL;
             return exc.err;
         }
     }
@@ -207,28 +231,23 @@ char** NPP_GetSitesWithData(void) {
  *~ Utilitiy Implementations and Statics
  *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
-NPTimerCtx::map NPTimerMgr::ctxmap;
-
 namespace Nekoite {
     #if defined(_WIN32)
     void log_v(const char* fmt, va_list args) {
         char szBuf[4096];
         vsnprintf(szBuf, sizeof(szBuf), fmt, args);
         szBuf[4095] = 0;
-        ::OutputDebugStringA(szBuf);
-    }
+        ::OutputDebugStringA(szBuf); }
     #elif !defined(__APPLE__)
     void log_v(const char* fmt, va_list args) {
-        vfprintf(stderr, fmt, args);
-    }
+        vfprintf(stderr, fmt, args); }
     #endif
 
     void log(const char* fmt, ...) {
         va_list args;
         va_start(args, fmt);
         log_v(fmt, args);
-        va_end(args);
-    }
+        va_end(args); }
 
     #if defined(_WIN32)
     bool waitForDebugger() {
@@ -255,8 +274,7 @@ namespace Nekoite {
                 return true;
             else ::sleep(100);
         }
-        return true;
-    }
+        return true; }
     #endif
 }
 

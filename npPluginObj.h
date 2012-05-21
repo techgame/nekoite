@@ -4,15 +4,14 @@
 
 namespace Nekoite {
     struct NekoiteRoot {
-        virtual void    initPlugin(NPNetscapeFuncs* hostApi, NPPluginFuncs* pluginApi) {}
+        virtual void    initPlugin(NPPluginFuncs* pluginApi) {}
         virtual NPError clearSiteData(const char* site, uint64_t flags, uint64_t maxAge) { return NPERR_NO_ERROR; }
         virtual char**  getSitesWithData() { return NULL; }
-        virtual NPPluginObj* create(NPP pluginInstance, NPNetscapeFuncs* hostApi) = 0;
+        virtual NPPluginObj* create(NPP instance) = 0;
     };
     template<typename T>
     struct NekoiteRoot_t : NekoiteRoot {
-        virtual T* create(NPP pluginInstance, NPNetscapeFuncs* hostApi) {
-            return new T(pluginInstance, hostApi); }
+        virtual T* create(NPP instance) {return new T(instance); }
     };
 
     struct NPPluginObj {
@@ -50,9 +49,8 @@ namespace Nekoite {
 
 
     struct NPPluginObjBase : NPPluginObj {
-        NPPluginObjBase(NPP inst, NPNetscapeFuncs* hostApi) 
-            : host(new NPHostObj(inst, hostApi)) {}
-        virtual ~NPPluginObjBase() { host->instance = NULL; }
+        NPPluginObjBase(NPP inst) : host(new NPHostObj(inst)) {}
+        virtual ~NPPluginObjBase() { host->onPluginDestroyed(); }
 
         NPHostObj* host;
         virtual NPHostObj* hostObj() const { return host; }
@@ -72,13 +70,6 @@ namespace Nekoite {
         virtual NPError initFinish(NPMIMEType pluginType, uint16_t mode) { return NPERR_NO_ERROR; }
 
         virtual NPError destroy(NPSavedData** save) { return NPERR_NO_ERROR; }
-
-        uint32_t scheduleTimer(NPTimerTarget* tgt, uint32_t interval, bool repeat=true) {
-            return NPTimerMgr::scheduleTimer(host, tgt, interval, repeat); }
-        bool unscheduleTimer(uint32_t timerID) {
-            return NPTimerMgr::unscheduleTimer(host, timerID); }
-        bool unscheduleTimer(NPTimerCtx* ctx) {
-            return NPTimerMgr::unscheduleTimer(host, ctx); }
     };
 
 
