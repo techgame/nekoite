@@ -5,22 +5,29 @@
 namespace Nekoite {
     /*~ Scriptable Plugin Obj Definition ~~~~~~~~~~~~~~~~~*/
 
+    template<typename T>
     struct NPScriptablePluginObj : NPPluginObjBase {
+        typedef NPScriptablePluginObj<T> base_t;
+
         NPScriptablePluginObj(NPP inst, NPNetscapeFuncs* hostApi) 
-            : NPPluginObjBase(inst, hostApi) {}
+            : NPPluginObjBase(inst, hostApi), _rootObj(NULL)
+        {}
+        virtual ~NPScriptablePluginObj() {
+            if (_rootObj) _rootObj = host->release(_rootObj);}
 
         virtual NPError initStart(NPMIMEType pluginType, uint16_t mode) {
             host->setValue(NPPVpluginWindowBool, (void *)false);
             host->setValue(NPPVpluginTransparentBool, (void *)true);
-            return NPERR_NO_ERROR; 
-        }
-        virtual NPError getValue(NPPVariable variable, void *value) {
-            switch (variable) {
-            case NPPVpluginScriptableNPObject:
-                return setvoid(value, host->retain(rootScriptObj()));
+            return NPERR_NO_ERROR; }
+        virtual NPError getValue(NPPVariable key, void *value) {
+            switch (key) {
+            case NPPVpluginScriptableNPObject: {
+                return setvoid(value, host->retain(rootScriptObj())); }
             default: return NPERR_GENERIC_ERROR; } }
 
-        virtual NPObject* rootScriptObj() = 0;
+        virtual NPObject* rootScriptObj() {
+            return _rootObj ? _rootObj : _rootObj = T::klass.create(*this); }
+        NPObject* _rootObj;
     };
 
     /*~ NPObject virtualized skeleton ~~~~~~~~~~~~~~~~~~~~*/
@@ -29,13 +36,11 @@ namespace Nekoite {
         NPHostObj* host;
 
         NPScriptObj(NPP npp, NPClass *aClass) : host(asNPHostObj(npp)) {
-            _class = aClass; referenceCount = 1;
-        }
-        virtual ~NPScriptObj() {
-            _class = NULL; referenceCount = 0; 
-        };
-        virtual const char* className() { return "[NPScriptObj]"; }
-        bool isNPObjectValid() { return _class && referenceCount>0; }
+            _class = aClass; referenceCount = 1; }
+        virtual ~NPScriptObj() { _class = NULL; referenceCount = 0; };
+        virtual const char* className() { return "NPScriptObj"; }
+        bool isNPObjectValid(bool bSkipValid=false) {
+            return _class && referenceCount>0 && (bSkipValid || isValid()); }
         virtual bool isValid() { return true; }
 
         virtual void deallocate() { }
@@ -75,9 +80,9 @@ namespace Nekoite {
             return NPTimerMgr::unscheduleTimer(host, tgt); }
     };
 
-    inline NPScriptObj* asNPScriptObj(NPObject* npobj, bool checkValid=true) {
+    inline NPScriptObj* asNPScriptObj(NPObject* npobj, bool bSkipValid=false) {
         NPScriptObj* obj = static_cast<NPScriptObj*>(npobj);
-        return obj && obj->isNPObjectValid() && (!checkValid || obj->isValid()) ? obj : NULL;
+        return obj && obj->isNPObjectValid(bSkipValid) ? obj : NULL;
     }
 
 
@@ -213,28 +218,25 @@ namespace Nekoite {
             construct = _construct;
         }
 
-        T* create(NPP npp) { return createInstance(npp, this); }
+        T* create(NPP npp) {
+            return static_cast<T*>(asNPHostObj(npp)->createObject(this)); }
         static const char* className() { return T::s_className(); }
 
     protected:
-        static T* createInstance(NPP npp, NPClass *aClass) {
-            T* obj = new T(npp, aClass);
-            if (obj && !obj->isValid()) {
-                delete obj; obj=NULL; }
-            return obj; }
         static NPObject* _allocate(NPP npp, NPClass *aClass) {
-            return createInstance(npp, aClass); }        
+            T* obj = new T(npp, aClass);
+            if (!obj->isNPObjectValid()) {
+                _deallocate(obj);
+                delete obj; obj=NULL;}
+            return obj; }
         static void _deallocate(NPObject *npobj) {
-            NPScriptObj* obj = asNPScriptObj(npobj, false);
-            if (obj) {
-                obj->deallocate();
-                delete obj;
-            }
-        }
+            NPScriptObj* obj = asNPScriptObj(npobj, true);
+            if (!obj) return;
+            obj->deallocate();
+            delete obj; obj = NULL;}
         static void _invalidate(NPObject *npobj) {
-            NPScriptObj* obj = asNPScriptObj(npobj, false);
+            NPScriptObj* obj = asNPScriptObj(npobj, true);
             if (obj) obj->invalidate(); }
-
         static bool _hasMethod(NPObject *npobj, NPIdentifier name) {
             NPScriptObj* obj = asNPScriptObj(npobj);
             return obj ? obj->hasMethod(name) : false; }
@@ -247,7 +249,6 @@ namespace Nekoite {
         static bool _construct(NPObject *npobj, const NPVariant *args, uint32_t argCount, NPVariant *result) {
             NPScriptObj* obj = asNPScriptObj(npobj);
             return obj ? obj->construct(args, argCount, result) : false; }
-
         static bool _hasProperty(NPObject *npobj, NPIdentifier name) {
             NPScriptObj* obj = asNPScriptObj(npobj);
             return obj ? obj->hasProperty(name) : false; }
@@ -260,7 +261,6 @@ namespace Nekoite {
         static bool _removeProperty(NPObject *npobj, NPIdentifier name) {
             NPScriptObj* obj = asNPScriptObj(npobj);
             return obj ? obj->removeProperty(name) : false; }
-
         static bool _enumerate(NPObject *npobj, NPIdentifier **value, uint32_t *count) {
             NPScriptObj* obj = asNPScriptObj(npobj);
             return obj ? obj->enumerate(value, count) : false; }
