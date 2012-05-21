@@ -51,27 +51,24 @@ namespace Nekoite {
 
     struct NPPluginObjBase : NPPluginObj {
         NPPluginObjBase(NPP inst, NPNetscapeFuncs* hostApi) 
-            : host(&_hostObj), _hostObj(inst, hostApi, NULL)
-        { host->plugin = this; }
-        virtual ~NPPluginObjBase() {}
+            : host(new NPHostObj(inst, hostApi)) {}
+        virtual ~NPPluginObjBase() { host->instance = NULL; }
 
-        NPHostObj* host; NPHostObj _hostObj;
+        NPHostObj* host;
         virtual NPHostObj* hostObj() const { return host; }
 
         virtual NPError initialize(NPMIMEType pluginType, uint16_t mode, 
             int16_t argc, char* argn[], char* argv[], NPSavedData* saved) 
         { // composed method: initMime followed by initArg() for each arg
             NPError err = initStart(pluginType, mode);
-            if (err) return err;
-            for (int16_t idx=0; idx<argc; idx++) {
-                initArg(idx, argn[idx], argv[idx]);
-                if (err) return err;
-            }
-            err = initFinish(pluginType, mode);
+            if (!err && saved) err = initSaved(saved);
+            if (!err) err = initArgList(argc, argn, argv);
+            if (!err) err = initFinish(pluginType, mode);
             return err;
         }
         virtual NPError initStart(NPMIMEType pluginType, uint16_t mode) { return NPERR_NO_ERROR; }
-        virtual NPError initArg(uint16_t argIdx, char* name, char* value) { return NPERR_NO_ERROR; }
+        virtual NPError initSaved(NPSavedData* saved) { return NPERR_NO_ERROR; }
+        virtual NPError initArgList(int16_t argc, char* argn[], char* argv[]) { return NPERR_NO_ERROR; }
         virtual NPError initFinish(NPMIMEType pluginType, uint16_t mode) { return NPERR_NO_ERROR; }
 
         virtual NPError destroy(NPSavedData** save) { return NPERR_NO_ERROR; }
@@ -115,7 +112,8 @@ namespace Nekoite {
         if (r && r->type == NPVariantType_String)
             res = &r->value.stringValue;
         return out ? *out = res : res; }
-
+    template<typename T>
+    inline T getVariant(NPVariant& r, T* out) { return getVariant(&r, out); }
 
     inline const NPVariant* asVariantArgAt(uint32_t argIdx, const NPVariant* args, uint32_t argCount, NPVariantType typeKey) {
         return (argIdx<argCount && (typeKey == args[argIdx].type)) ? &args[argIdx] : NULL; }

@@ -188,6 +188,9 @@ namespace Nekoite {
         template <typename N>
         inline bool hasProperty(N name) {
             return hasProperty(ident(name)); }
+        template <typename N>
+        inline bool getProperty(N name, NPVariant *result) {
+            return getProperty(ident(name), result); }
         template <typename N, typename V>
         inline bool setProperty(N name, V value) {
             NPVariant vv; setVariant(&vv, value);
