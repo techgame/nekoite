@@ -3,6 +3,18 @@
 #include "npObjFramework.h"
 
 namespace NPObjFramework {
+    struct NPPlugin {
+        virtual void    initPlugin(NPNetscapeFuncs* hostApi, NPPluginFuncs* pluginApi) {}
+        virtual NPError clearSiteData(const char* site, uint64_t flags, uint64_t maxAge) { return NPERR_NO_ERROR; }
+        virtual char**  getSitesWithData() { return NULL; }
+        virtual NPPluginObj* create(NPP pluginInstance, NPNetscapeFuncs* hostApi) = 0;
+    };
+    template<typename T>
+    struct NPPlugin_t : public NPPlugin {
+        virtual T* create(NPP pluginInstance, NPNetscapeFuncs* hostApi) {
+            return new T(pluginInstance, hostApi); }
+    };
+
     struct NPPluginObj {
         virtual ~NPPluginObj() {}
         virtual NPError initialize(NPMIMEType pluginType, uint16_t mode, 

@@ -27,6 +27,7 @@
 #include "npapi/npruntime.h"
 
 namespace NPObjFramework {
+    struct NPPlugin;
     struct NPPluginObj;
 
     void log(const char* fmt, ...);
@@ -34,8 +35,7 @@ namespace NPObjFramework {
     bool waitForDebugger();
 }
 
-/* implement createNPPluginObj in your library by creating concrete instance of an NPPluginObj */
-NPObjFramework::NPPluginObj* createNPPluginObj(NPP pluginInstance, NPNetscapeFuncs* hostApi);
+NPObjFramework::NPPlugin* rootNPPlugin();
 
 #include "npHostObj.h"
 #include "npTimers.h"

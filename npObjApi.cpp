@@ -17,8 +17,8 @@ NPError OSCALL NP_Initialize(NPNetscapeFuncs* hostApi) {
 }
 #else
 NPError OSCALL NP_Initialize(NPNetscapeFuncs* hostApi, NPPluginFuncs* pluginApi) {
-    NP_GetEntryPoints(pluginApi);
     g_hostApi = hostApi;
+    NP_GetEntryPoints(pluginApi);
     return NPERR_NO_ERROR;
 }
 #endif
@@ -49,6 +49,12 @@ NPError OSCALL NP_GetEntryPoints(NPPluginFuncs* pluginApi) {
     if (lastEntry >= offsetof(NPPluginFuncs, urlredirectnotify)) {
         pluginApi->urlredirectnotify = NPP_URLRedirectNotify;
     }
+    if (lastEntry >= offsetof(NPPluginFuncs, getsiteswithdata)) {
+        pluginApi->clearsitedata = NPP_ClearSiteData;
+        pluginApi->getsiteswithdata = NPP_GetSitesWithData;
+    }
+    NPPlugin* root = rootNPPlugin();
+    if (root) root->initPlugin(g_hostApi, pluginApi);
     return NPERR_NO_ERROR;
 }
 
@@ -61,7 +67,9 @@ NPError NPP_New(NPMIMEType pluginType, NPP instance, uint16_t mode,
         int16_t argc, char* argn[], char* argv[], NPSavedData* saved)
 {
     try {
-        NPPluginObj* obj = createNPPluginObj(instance, g_hostApi);
+        NPPlugin* root = rootNPPlugin();
+        if (!root) return NPERR_GENERIC_ERROR;
+        NPPluginObj* obj = root->create(instance, g_hostApi);
         if (!obj) return NPERR_GENERIC_ERROR;
         instance->pdata = (void*) obj;
         return obj->initialize(pluginType, mode, argc, argn, argv, saved);
@@ -176,6 +184,19 @@ void NPP_LostFocus(NPP instance) {
         NPPluginObj* obj = asNPPluginObj(instance);
         if (obj) obj->lostFocus();
     } catch (NPException) { return; }
+}
+
+NPError NPP_ClearSiteData(const char* site, uint64_t flags, uint64_t maxAge) {
+    try {
+        NPPlugin* root = rootNPPlugin();
+        return root ? root->clearSiteData(site, flags, maxAge) : NPERR_GENERIC_ERROR;
+    } catch (NPException) { return NPERR_GENERIC_ERROR; }
+}
+char** NPP_GetSitesWithData(void) {
+    try {
+        NPPlugin* root = rootNPPlugin();
+        return root ? root->getSitesWithData() : NULL;
+    } catch (NPException) { return NULL; }
 }
 
 /*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
