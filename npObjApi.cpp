@@ -247,11 +247,14 @@ namespace Nekoite {
         mib[2] = KERN_PROC_PID;
         mib[3] = getpid();
 
-        do {
-            ::sleep(100);
+        while (true) {
             size = sizeof(info);
+            info.kp_proc.p_flag = 0;
             sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, NULL, 0);
-        } while ((info.kp_proc.p_flag & P_TRACED) == 0);
+            if (info.kp_proc.p_flag & P_TRACED)
+                return true;
+            else ::sleep(100);
+        }
         return true;
     }
     #endif
