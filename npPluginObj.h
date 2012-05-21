@@ -3,17 +3,6 @@
 #include "nekoite.h"
 
 namespace Nekoite {
-    struct NekoiteRoot {
-        virtual void    initPlugin(NPPluginFuncs* pluginApi) {}
-        virtual NPError clearSiteData(const char* site, uint64_t flags, uint64_t maxAge) { return NPERR_NO_ERROR; }
-        virtual char**  getSitesWithData() { return NULL; }
-        virtual NPPluginObj* create(NPP instance) = 0;
-    };
-    template<typename T>
-    struct NekoiteRoot_t : NekoiteRoot {
-        virtual T* create(NPP instance) {return new T(instance); }
-    };
-
     struct NPPluginObj {
         virtual ~NPPluginObj() {}
         virtual NPError initialize(NPMIMEType pluginType, uint16_t mode, 

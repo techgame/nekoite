@@ -3,16 +3,15 @@
 #include "nekoite.h"
 
 namespace Nekoite {
-    /*~ Scriptable Plugin Obj Definition ~~~~~~~~~~~~~~~~~*/
+    /*~ Runtime Plugin Obj Definition ~~~~~~~~~~~~~~~~~*/
 
     template<typename T>
-    struct NPScriptablePluginObj : NPPluginObjBase {
-        typedef NPScriptablePluginObj<T> base_t;
+    struct NPRuntimePluginObj : NPPluginObjBase {
+        typedef NPRuntimePluginObj<T> base_t;
 
-        NPScriptablePluginObj(NPP inst) 
-            : NPPluginObjBase(inst), _rootObj(NULL)
-        {}
-        virtual ~NPScriptablePluginObj() {
+        NPRuntimePluginObj(NPP inst) 
+          : NPPluginObjBase(inst), _rootObj(NULL) {}
+        virtual ~NPRuntimePluginObj() {
             if (_rootObj) _rootObj = host->release(_rootObj);}
 
         virtual NPError initStart(NPMIMEType pluginType, uint16_t mode) {

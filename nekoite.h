@@ -43,3 +43,17 @@ Nekoite::NekoiteRoot* nekoiteRoot();
 #include "npPluginObj.h"
 #include "npScriptObj.h"
 
+namespace Nekoite {
+    struct NekoiteRoot {
+        virtual void    initPlugin(NPPluginFuncs* pluginApi) {}
+        virtual NPError clearSiteData(const char* site, uint64_t flags, uint64_t maxAge) { return NPERR_NO_ERROR; }
+        virtual char**  getSitesWithData() { return NULL; }
+        virtual NPPluginObj* create(NPP instance) = 0;
+    };
+    template<typename T>
+    struct NekoiteRoot_t : NekoiteRoot {
+        virtual T* create(NPP instance) { return new T(instance); }
+    };
+    template<typename T>
+    struct NekoiteRuntimeRoot_t : NekoiteRoot_t< NPRuntimePluginObj<T> > {};
+}
