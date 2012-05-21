@@ -2,7 +2,7 @@
 #if !defined(_WIN32)
 #include <sys/sysctl.h>
 #endif
-#include "npObjFramework.h"
+#include "nekoite.h"
 
 namespace Nekoite {
     NPNetscapeFuncs* NPHostObj::api = NULL;

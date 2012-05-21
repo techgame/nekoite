@@ -1,6 +1,6 @@
 /* -*- coding: utf-8 -*- vim: set ts=4 sw=4 expandtab */
 #pragma once
-#include "npObjFramework.h"
+#include "nekoite.h"
 
 namespace Nekoite {
     /*~ Scriptable Plugin Obj Definition ~~~~~~~~~~~~~~~~~*/
