@@ -1,5 +1,9 @@
 /* -*- coding: utf-8 -*- vim: set ts=4 sw=4 expandtab */
+#if !defined(_WIN32)
+#include <sys/sysctl.h>
+#endif
 #include "npObjFramework.h"
+
 extern "C" {
     NPError OSCALL NP_Initialize(NPNetscapeFuncs *browserApi);
     NPError OSCALL NP_GetEntryPoints(NPPluginFuncs *pluginApi);
@@ -205,18 +209,20 @@ char** NPP_GetSitesWithData(void) {
 
 NPTimerCtx::map NPTimerMgr::ctxmap;
 
-#if !defined(__APPLE__)
 namespace Nekoite {
+    #if defined(_WIN32)
     void log_v(const char* fmt, va_list args) {
         char szBuf[4096];
-        vsprintf(szBuf, fmt, args);
-        #if defined(_WIN32)
+        vsnprintf(szBuf, sizeof(szBuf), fmt, args);
+        szBuf[4095] = 0;
         ::OutputDebugStringA(szBuf);
-        #endif
-        #if !defined(_WINDOWS)
-        puts(szBuf);
-        #endif
     }
+    #elif !defined(__APPLE__)
+    void log_v(const char* fmt, va_list args) {
+        vfprintf(stderr, fmt, args);
+    }
+    #endif
+
     void log(const char* fmt, ...) {
         va_list args;
         va_start(args, fmt);
@@ -227,10 +233,27 @@ namespace Nekoite {
     #if defined(_WIN32)
     bool waitForDebugger() {
         while (!::IsDebuggerPresent())
-            ::Sleep(10);
+            ::Sleep(100);
         return true; }
     #else
-    bool waitForDebugger() { return false; }
+    bool waitForDebugger() {
+        int mib[4];
+        struct kinfo_proc info;
+        size_t size;
+
+        info.kp_proc.p_flag = 0;
+        mib[0] = CTL_KERN;
+        mib[1] = KERN_PROC;
+        mib[2] = KERN_PROC_PID;
+        mib[3] = getpid();
+
+        do {
+            ::sleep(100);
+            size = sizeof(info);
+            sysctl(mib, sizeof(mib) / sizeof(*mib), &info, &size, NULL, 0);
+        } while ((info.kp_proc.p_flag & P_TRACED) == 0);
+        return true;
+    }
     #endif
 }
-#endif
+

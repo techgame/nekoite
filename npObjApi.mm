@@ -5,12 +5,5 @@ namespace Nekoite {
         NSString* format = [NSString stringWithCString: fmt encoding: NSASCIIStringEncoding];
         NSLogv(format, args);
     }
-    void log(const char* fmt, ...) {
-        va_list args;
-        va_start(args, fmt);
-        log_v(fmt, args);
-        va_end(args);
-    }
-    bool waitForDebugger() { return false; }
 }
 #endif
