@@ -10,7 +10,7 @@ namespace Nekoite {
         virtual NPPluginObj* create(NPP pluginInstance, NPNetscapeFuncs* hostApi) = 0;
     };
     template<typename T>
-    struct NekoiteRoot_t : public NekoiteRoot {
+    struct NekoiteRoot_t : NekoiteRoot {
         virtual T* create(NPP pluginInstance, NPNetscapeFuncs* hostApi) {
             return new T(pluginInstance, hostApi); }
     };
@@ -88,9 +88,7 @@ namespace Nekoite {
     /*~ Utility methods ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
 
     template<typename T>
-    inline NPError setvoid(void* dst, T* src) {
-        *((T**)dst) = src;
-        return NPERR_NO_ERROR; }
+    inline NPError setvoid(void* dst, T* src) { *((T**)dst)=src; return NPERR_NO_ERROR; }
 
     inline bool* getVariant(NPVariant* r, bool** out) {
         bool* res = NULL;

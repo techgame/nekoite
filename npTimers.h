@@ -67,7 +67,7 @@ namespace Nekoite {
     };
 
     template<typename T>
-    struct NPTimerTargetEx : public NPTimerTarget {
+    struct NPTimerTargetEx : NPTimerTarget {
         NPTimerCtx* timerCtx;
         NPTimerTargetEx():timerCtx(NULL) {}
         virtual bool timerRetain(NPTimerCtx* ctx) { timerCtx = ctx; return true; }
