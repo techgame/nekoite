@@ -250,8 +250,12 @@ namespace Nekoite {
 
         NPVariant* setVariantVoid(NPVariant* r) {
             r->type = NPVariantType_Void; r->value.objectValue = NULL; return r; }
+        void setVariantVoid(NPVariant* r, uint16_t count) {
+            while (--count>=0) setVariantVoid(r++); }
         NPVariant* setVariantNull(NPVariant* r) {
             r->type = NPVariantType_Null; r->value.objectValue = NULL; return r; }
+        void setVariantNull(NPVariant* r, uint16_t count) {
+            while (--count>=0) setVariantNull(r++); }
         
         NPVariant* setVariant(NPVariant* r, bool v) {
             r->type = NPVariantType_Bool; r->value.boolValue = v; return r; }

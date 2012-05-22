@@ -75,7 +75,9 @@ namespace Nekoite {
         template <typename T> inline NPIdentifier ident(T name) { return host->ident(name); }
         inline std::string identStr(NPIdentifier name) { return host->identStr(name); }
         inline NPVariant* setVariantVoid(NPVariant* r) { return host->setVariantVoid(r); }
+        inline void setVariantVoid(NPVariant* r, uint16_t count) { host->setVariantVoid(r, count); }
         inline NPVariant* setVariantNull(NPVariant* r) { return host->setVariantNull(r); }
+        inline void setVariantNull(NPVariant* r, uint16_t count) { host->setVariantNull(r, count); }
         template <typename V> inline NPVariant* setVariant(NPVariant* r, V v) { return host->setVariant(r, v); }
         inline const char* variantStr(const NPVariant* r) { return host->variantStr(r); }
 
