@@ -46,8 +46,9 @@ namespace Nekoite {
             return _class && referenceCount>0 && (bSkipValid || isValid()); }
         virtual bool isValid() { return true; }
 
-        virtual void deallocate() { }
+        virtual void onPluginDestroyed() { invalidate(); }
         virtual void invalidate() { clearProperties(); }
+        virtual void deallocate() { }
 
         virtual bool hasMethod(NPIdentifier name) { return false; }
         virtual bool invoke(NPIdentifier name, const NPVariant *args, uint32_t argCount, NPVariant *result) { return false; }

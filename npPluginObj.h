@@ -39,7 +39,7 @@ namespace Nekoite {
 
     struct NPPluginObjBase : NPPluginObj {
         NPPluginObjBase(NPP inst) : host(new NPHostObj(inst)) {}
-        virtual ~NPPluginObjBase() { host->onPluginDestroyed(); }
+        virtual ~NPPluginObjBase() { }
 
         NPHostObj* host;
         virtual NPHostObj* hostObj() const { return host; }
@@ -58,7 +58,9 @@ namespace Nekoite {
         virtual NPError initArgList(int16_t argc, char* argn[], char* argv[]) { return NPERR_NO_ERROR; }
         virtual NPError initFinish(NPMIMEType pluginType, uint16_t mode) { return NPERR_NO_ERROR; }
 
-        virtual NPError destroy(NPSavedData** save) { return NPERR_NO_ERROR; }
+        virtual NPError destroy(NPSavedData** save) {
+            host->onPluginDestroyed(); 
+            return NPERR_NO_ERROR; }
     };
 
 

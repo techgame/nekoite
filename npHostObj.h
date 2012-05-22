@@ -29,13 +29,7 @@ namespace Nekoite {
         NPPluginObj* plugin() const {
             return !instance ? static_cast<NPPluginObj*>(instance->pdata) : NULL; }
 
-        void onPluginDestroyed() { instance = NULL; _destroyIfDone(); }
-        bool _destroyIfDone() {
-            if (instance || _allObjects.size()>0)
-                return false;
-            delete this;
-            return true;
-        }
+        bool onPluginDestroyed(bool internal=false);
 
         std::set<NPScriptObj*> _allObjects;
         NPHostObj* trackObj(NPScriptObj* obj) {
@@ -43,7 +37,7 @@ namespace Nekoite {
             return this; }
         NPHostObj* untrackObj(NPScriptObj* obj) {
             _allObjects.erase(obj);
-            _destroyIfDone();
+            if (!instance) onPluginDestroyed(true);
             return NULL; }
 
         /* General API */

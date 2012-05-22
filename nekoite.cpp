@@ -8,6 +8,20 @@ namespace Nekoite {
     NPNetscapeFuncs* NPHostObj::api = NULL;
     std::set<NPHostObj*> NPHostObj::_allHosts;
 
+    bool NPHostObj::onPluginDestroyed(bool internal) {
+        instance = NULL;
+        if (_allObjects.size() == 0) {
+            delete this;
+            return true;
+        } else if (!internal) {
+            std::set<NPScriptObj*>::iterator
+                iter = _allObjects.begin(),
+                end = _allObjects.end();
+            for(;iter!=end;iter++)
+                (*iter)->onPluginDestroyed();
+        }
+        return false; }
+
     void NPHostObj::_on_timer_s(NPP npp, uint32_t timerID) {
         NPHostObj* host = asNPHostObj(npp);
         if (host) host->_dispatchTimerEvent(timerID); }
