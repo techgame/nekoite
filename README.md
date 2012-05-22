@@ -21,7 +21,7 @@
 Because the npapi headers, the normal `__dllexport` method is unavailable.
 Export at least the following three entrypoints:
 
-        LIBRARY "npExample.dll"
+        LIBRARY "npExample"
 
         EXPORTS
             NP_GetEntryPoints   @1
