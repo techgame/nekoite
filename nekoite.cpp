@@ -248,10 +248,11 @@ char** NPP_GetSitesWithData(void) {
 namespace Nekoite {
     #if defined(_WIN32)
     void log_v(const char* fmt, va_list args) {
-        char szBuf[4096];
-        vsnprintf(szBuf, sizeof(szBuf), fmt, args);
-        szBuf[4095] = 0;
-        ::OutputDebugStringA(szBuf); }
+        int n = _vsctprintf(fmt, args)+1;
+        char *buf = (char*)::malloc(n);
+        _vsnprintf_s(buf, n, n-1, fmt, args);
+        ::OutputDebugStringA(buf);
+        ::free(buf); buf = NULL; }
     #elif !defined(__APPLE__)
     void log_v(const char* fmt, va_list args) {
         vfprintf(stderr, fmt, args); }
